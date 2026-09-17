@@ -10,7 +10,7 @@ import { ASSISTANT_KEY, type BoardCard } from "./boardLabels";
 // Same key the chat pages write when the user picks a model
 // (submitChatTurn.ts, AgentCreateForm.tsx). Copied rather than imported so
 // the experiment adds no surface to those modules.
-const lastModelConfigIDStorageKey = "agents.last-model-config-id";
+export const lastModelConfigIDStorageKey = "agents.last-model-config-id";
 
 // The assistant reads and acts on other chats, which needs a workspace with
 // the Coder tooling. One shared workspace serves every card's assistant.
