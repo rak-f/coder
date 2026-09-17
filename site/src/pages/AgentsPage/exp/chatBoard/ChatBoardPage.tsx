@@ -42,7 +42,7 @@ import type { DragData } from "./BoardCard";
 import { BoardColumns } from "./BoardColumns";
 import { BoardHeader } from "./BoardHeader";
 import { BoardWindows } from "./BoardWindows";
-import { effortsOf, type Plan } from "./boardApi";
+import { effortsOf, type Plan, renameEffort } from "./boardApi";
 import { boardChats, updateChatLabels } from "./boardChats";
 import {
 	boardCollision,
@@ -65,7 +65,6 @@ import {
 	saveBoardStorage,
 } from "./boardStorage";
 import { DragGhost } from "./DragGhost";
-import { EffortFilter } from "./EffortFilter";
 import { refetchChatListUntilLanded } from "./refreshChatList";
 import { runPlan } from "./runPlan";
 import {
@@ -348,12 +347,12 @@ const ChatBoardPage: FC = () => {
 					void navigate(reading ? `/agents/${reading}` : "/agents");
 				}}
 				onAssistant={openBoardAssistant}
-			/>
-			<EffortFilter
 				efforts={efforts}
-				cardCount={allCards.length}
-				value={effortFilter}
-				onChange={(effort) => updateStorage({ effortFilter: effort })}
+				effortFilter={effortFilter}
+				onEffortFilter={(effort) => updateStorage({ effortFilter: effort })}
+				onRenameEffort={(from, to) =>
+					void run(renameEffort(boardState, from, to))
+				}
 			/>
 			{chatsQuery.isError && (
 				<p className="m-0 px-3 py-2 text-sm text-content-destructive">
@@ -377,6 +376,7 @@ const ChatBoardPage: FC = () => {
 					knownEfforts={efforts.map((e) => e.name)}
 					onAssistant={openCardAssistant}
 					onNewChat={openDraft}
+					onFilterEffort={(effort) => updateStorage({ effortFilter: effort })}
 					onOpen={openChat}
 					onPreview={previewChat}
 					onPreviewEnd={endPreview}
