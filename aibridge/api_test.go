@@ -51,7 +51,7 @@ func TestNewRecorder_StampsEveryRecord(t *testing.T) {
 	ctx := testutil.Context(t, testutil.WaitShort)
 	logger := slogtest.Make(t, nil)
 	term := &acceptingRecorder{}
-	rec := aibridge.NewRecorder(logger, otel.Tracer("test"), func(context.Context) (aibridge.Recorder, error) {
+	rec := aibridge.NewRecorder(logger, otel.Tracer("test"), "api-key", false, func(context.Context) (aibridge.Recorder, error) {
 		return term, nil
 	})
 
