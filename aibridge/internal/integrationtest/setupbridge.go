@@ -63,6 +63,8 @@ type bridgeConfig struct {
 	// recorderMiddleware is inserted below the logging middleware, as the
 	// bridge pool does for deployment record policy.
 	recorderMiddleware []recorder.Middleware
+	// logSink additionally receives the bridge's logs.
+	logSink slog.Sink
 }
 
 // bridgeTestServer wraps an httptest.Server running a RequestBridge.
@@ -130,6 +132,29 @@ func withMCP(p mcp.ServerProxier) bridgeOption {
 	return func(c *bridgeConfig) { c.mcpProxy = p }
 }
 
+// withStructuredLogging enables structured interception logging, reporting the
+// records as having been made under apiKeyID.
+func withStructuredLogging(apiKeyID string) bridgeOption {
+	return func(c *bridgeConfig) {
+		c.structuredLogging = true
+		c.apiKeyID = apiKeyID
+	}
+}
+
+// withRecorderMiddleware inserts middleware below the logging middleware, the
+// position the bridge pool uses for deployment record policy.
+func withRecorderMiddleware(middleware ...recorder.Middleware) bridgeOption {
+	return func(c *bridgeConfig) {
+		c.recorderMiddleware = append(c.recorderMiddleware, middleware...)
+	}
+}
+
+// withLogSink additionally writes the bridge's logs to sink, for tests that
+// assert on what was logged.
+func withLogSink(sink slog.Sink) bridgeOption {
+	return func(c *bridgeConfig) { c.logSink = sink }
+}
+
 // withActor sets the actor ID and metadata for the BaseContext.
 func withActor(id string, md recorder.Metadata) bridgeOption {
 	return func(c *bridgeConfig) { c.userID = id; c.metadata = md }
@@ -160,6 +185,9 @@ func newBridgeTestServer(
 		cfg.tracer = defaultTracer
 	}
 	cfg.logger = newLogger(t)
+	if cfg.logSink != nil {
+		cfg.logger = cfg.logger.AppendSinks(cfg.logSink)
+	}
 	if cfg.mcpProxy == nil && !cfg.noMCPProxy {
 		cfg.mcpProxy = newNoopMCPManager()
 	}
