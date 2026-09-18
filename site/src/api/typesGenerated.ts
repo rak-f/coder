@@ -2661,6 +2661,40 @@ export const ChatListSources: ChatListSource[] = [
 
 // From codersdk/chats.go
 /**
+ * ChatMCPServer is the redacted view of a chat-attached MCP server.
+ */
+export interface ChatMCPServer {
+	readonly id: string;
+	readonly slug: string;
+	readonly url: string;
+	readonly header_names: readonly string[];
+	readonly tool_allow_list: readonly string[];
+	readonly tool_deny_list: readonly string[];
+	readonly allow_in_plan_mode: boolean;
+	readonly allow_in_subagents: boolean;
+	readonly forward_coder_headers: boolean;
+	readonly created_at: string;
+	readonly updated_at: string;
+}
+
+// From codersdk/chats.go
+/**
+ * ChatMCPServerRequest declares a streamable HTTP MCP server attached to
+ * one chat. Header values are stored encrypted and never returned.
+ */
+export interface ChatMCPServerRequest {
+	readonly slug: string;
+	readonly url: string;
+	readonly headers?: Record<string, string>;
+	readonly tool_allow_list?: readonly string[];
+	readonly tool_deny_list?: readonly string[];
+	readonly allow_in_plan_mode?: boolean;
+	readonly allow_in_subagents?: boolean;
+	readonly forward_coder_headers?: boolean;
+}
+
+// From codersdk/chats.go
+/**
  * ChatMessage represents a single message in a chat.
  */
 export interface ChatMessage {
@@ -3835,6 +3869,11 @@ export interface CreateChatMessageRequest {
 	readonly content: readonly ChatInputPart[];
 	readonly model_config_id?: string;
 	readonly mcp_server_ids?: string[];
+	/**
+	 * MCPServers replaces the chat-attached MCP servers.
+	 * nil: no change, empty: remove all.
+	 */
+	readonly mcp_servers?: ChatMCPServerRequest[];
 	readonly busy_behavior?: ChatBusyBehavior;
 	/**
 	 * PlanMode switches the chat's persistent plan mode.
@@ -3907,6 +3946,10 @@ export interface CreateChatRequest {
 	 * subject to change.
 	 */
 	readonly unsafe_dynamic_tools?: readonly DynamicTool[];
+	/**
+	 * MCPServers declares chat-attached MCP servers. Experimental.
+	 */
+	readonly mcp_servers?: readonly ChatMCPServerRequest[];
 	readonly plan_mode?: ChatPlanMode;
 	readonly client_type?: ChatClientType;
 }
@@ -5040,6 +5083,7 @@ export type Experiment =
 	| "agent-lifecycle-hooks"
 	| "auto-fill-parameters"
 	| "chat-advisor"
+	| "chat-mcp-servers"
 	| "chat-virtual-desktop"
 	| "example"
 	| "mcp-server-http"
@@ -5056,6 +5100,7 @@ export const Experiments: Experiment[] = [
 	"agent-lifecycle-hooks",
 	"auto-fill-parameters",
 	"chat-advisor",
+	"chat-mcp-servers",
 	"chat-virtual-desktop",
 	"example",
 	"mcp-server-http",
@@ -6147,6 +6192,18 @@ export const MaxChatFileIDs = 50;
  * attachments.
  */
 export const MaxChatFileSizeBytes = 10485760;
+
+// From codersdk/chats.go
+/**
+ * MaxChatMCPServers caps chat-attached MCP servers per chat.
+ */
+export const MaxChatMCPServers = 5;
+
+// From codersdk/chats.go
+/**
+ * MaxChatMCPServersBytes caps the aggregate size of one mcp_servers declaration.
+ */
+export const MaxChatMCPServersBytes = 24576;
 
 // From codersdk/usersecretsimport.go
 /**
