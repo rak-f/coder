@@ -10,6 +10,31 @@ import (
 
 var _ Recorder = &LogRecorder{}
 
+// The structured log contract for AI Gateway interception records. Customer
+// SIEM pipelines select and parse on these values, so they are public API and
+// must not change without a deprecation. They live here, rather than beside
+// either emitter, because both the gateway and coderd emit this format and
+// duplicated literals would let the two drift.
+const (
+	// InterceptionLogMarker is the message carried by every structured
+	// interception record line.
+	InterceptionLogMarker = "interception log"
+	// MetadataUserAgentKey is the metadata key reporting the request's user
+	// agent, which is merged into an interception's metadata before it is
+	// logged.
+	MetadataUserAgentKey = "request_user_agent"
+)
+
+// Values of the record_type field, one per [Recorder] method.
+const (
+	RecordTypeInterceptionStart = "interception_start"
+	RecordTypeInterceptionEnd   = "interception_end"
+	RecordTypeTokenUsage        = "token_usage"
+	RecordTypePromptUsage       = "prompt_usage"
+	RecordTypeToolUsage         = "tool_usage"
+	RecordTypeModelThought      = "model_thought"
+)
+
 // LogRecorder optionally wraps another [Recorder] and logs every call.
 // If the wrapped recorder is nil, calls are logged but not delegated on.
 //
