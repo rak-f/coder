@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,7 +21,11 @@ type ConnectionLog struct {
 	WorkspaceName          string              `json:"workspace_name"`
 	AgentName              string              `json:"agent_name"`
 	IP                     *netip.Addr         `json:"ip,omitempty"`
-	Type                   ConnectionType      `json:"type"`
+	// Type is the app that connected, such as "cursor", or a web
+	// ConnectionType, such as "port_forwarding".
+	Type            string         `json:"type"`
+	TypeDisplayName string         `json:"type_display_name"`
+	TypeFamily      ConnectionType `json:"type_family"`
 
 	// WebInfo is only set when `type` is one of:
 	// - `ConnectionTypePortForwarding`
@@ -28,28 +33,104 @@ type ConnectionLog struct {
 	// - `ConnectionTypeTunnel`
 	WebInfo *ConnectionLogWebInfo `json:"web_info,omitempty"`
 
-	// SSHInfo is only set when `type` is one of:
-	// - `ConnectionTypeSSH`
-	// - `ConnectionTypeReconnectingPTY`
-	// - `ConnectionTypeVSCode`
-	// - `ConnectionTypeJetBrains`
+	// SSHInfo is set for every other `type`.
 	SSHInfo *ConnectionLogSSHInfo `json:"ssh_info,omitempty"`
 }
 
-// ConnectionType is the type of connection that the agent is receiving.
+// ConnectionType is a value the connection log `type` filter accepts.
 type ConnectionType string
 
 const (
-	ConnectionTypeSSH             ConnectionType = "ssh"
-	ConnectionTypeVSCode          ConnectionType = "vscode"
-	ConnectionTypeJetBrains       ConnectionType = "jetbrains"
-	ConnectionTypeReconnectingPTY ConnectionType = "reconnecting_pty"
-	ConnectionTypeWorkspaceApp    ConnectionType = "workspace_app"
-	ConnectionTypePortForwarding  ConnectionType = "port_forwarding"
+	// App families.
+	ConnectionTypeSSH             = ConnectionType(AppFamilySSH)
+	ConnectionTypeVSCode          = ConnectionType(AppFamilyVSCode)
+	ConnectionTypeJetBrains       = ConnectionType(AppFamilyJetBrains)
+	ConnectionTypeReconnectingPTY = ConnectionType(AppFamilyReconnectingPTY)
+	ConnectionTypeUnknown         = ConnectionType(AppFamilyUnknown)
+
+	// Web connection types.
+	ConnectionTypeWorkspaceApp   ConnectionType = "workspace_app"
+	ConnectionTypePortForwarding ConnectionType = "port_forwarding"
 	// ConnectionTypeTunnel records accepted and denied tailnet tunnel
 	// requests made by authenticated users.
 	ConnectionTypeTunnel ConnectionType = "tunnel"
 )
+
+var webTypeDisplayNames = map[ConnectionType]string{
+	ConnectionTypeWorkspaceApp:   "Workspace App",
+	ConnectionTypePortForwarding: "Port Forwarding",
+	ConnectionTypeTunnel:         "Tunnel",
+}
+
+// notConnectionFamilies are app families the `type` filter does not accept.
+var notConnectionFamilies = map[AppFamilyName]struct{}{
+	// Recorded only by usage tracking, never by a connection log.
+	AppFamilySFTP: {},
+}
+
+// FilterableConnectionTypes lists the values the `type` filter accepts.
+func FilterableConnectionTypes() []ConnectionType {
+	types := make([]ConnectionType, 0, len(webTypeDisplayNames)+len(sessionApps)+1)
+	types = append(types, ConnectionTypeUnknown)
+	for typ := range webTypeDisplayNames {
+		types = append(types, typ)
+	}
+	for _, family := range SessionCountAppFamilies() {
+		if _, skip := notConnectionFamilies[family]; !skip {
+			types = append(types, ConnectionType(family))
+		}
+	}
+	slices.Sort(types)
+	return slices.Compact(types)
+}
+
+// DisplayName returns the human-readable name of t.
+func (t ConnectionType) DisplayName() string {
+	return ConnectionLogTypeDisplayName(string(t))
+}
+
+// ConnectionLogTypeDisplayName returns the human-readable name of a
+// ConnectionLog.Type value, or the value itself if it is unregistered.
+func ConnectionLogTypeDisplayName(logType string) string {
+	if logType == string(ConnectionTypeUnknown) {
+		return "Unknown"
+	}
+	if name, ok := webTypeDisplayNames[ConnectionType(logType)]; ok {
+		return name
+	}
+	return AppDisplayName(logType)
+}
+
+// ConnectionLogTypeFamily returns the filter that matches a ConnectionLog.Type
+// value.
+func ConnectionLogTypeFamily(logType string) ConnectionType {
+	if _, ok := webTypeDisplayNames[ConnectionType(logType)]; ok {
+		return ConnectionType(logType)
+	}
+	family := AppNameFamily(logType)
+	if _, skip := notConnectionFamilies[family]; skip {
+		return ConnectionTypeUnknown
+	}
+	return ConnectionType(family)
+}
+
+// KnownConnectionLogTypes lists the values ConnectionTypeUnknown excludes.
+func KnownConnectionLogTypes() []string {
+	var known []string
+	for _, t := range FilterableConnectionTypes() {
+		known = append(known, t.MatchingTypes()...)
+	}
+	return known
+}
+
+// MatchingTypes lists the ConnectionLog.Type values a filter on t matches.
+// It returns nil for ConnectionTypeUnknown and for an invalid t.
+func (t ConnectionType) MatchingTypes() []string {
+	if _, ok := webTypeDisplayNames[t]; ok {
+		return []string{string(t)}
+	}
+	return AppNamesInFamily(AppFamilyName(t))
+}
 
 // ConnectionLogStatus is the status of a connection log entry.
 // It's the argument to the `status` filter when fetching connection logs.

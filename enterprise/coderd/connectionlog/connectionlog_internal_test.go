@@ -16,6 +16,7 @@ import (
 	"cdr.dev/slog/v3/sloggers/slogtest"
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/dbmock"
+	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/testutil"
 	"github.com/coder/quartz"
 )
@@ -495,7 +496,7 @@ func fakeConnectEvent(workspaceID uuid.UUID, agentName string, connectionID uuid
 		WorkspaceID:      workspaceID,
 		WorkspaceName:    "test-workspace",
 		AgentName:        agentName,
-		Type:             database.ConnectionTypeSsh,
+		Type:             string(codersdk.ConnectionTypeSSH),
 		ConnectionID:     uuid.NullUUID{UUID: connectionID, Valid: true},
 		ConnectionStatus: database.ConnectionStatusConnected,
 	}
@@ -510,7 +511,7 @@ func fakeDisconnectEvent(workspaceID uuid.UUID, agentName string, connectionID u
 		WorkspaceID:      workspaceID,
 		WorkspaceName:    "test-workspace",
 		AgentName:        agentName,
-		Type:             database.ConnectionTypeSsh,
+		Type:             string(codersdk.ConnectionTypeSSH),
 		ConnectionID:     uuid.NullUUID{UUID: connectionID, Valid: true},
 		ConnectionStatus: database.ConnectionStatusDisconnected,
 		Code:             sql.NullInt32{Int32: 0, Valid: true},
@@ -527,7 +528,7 @@ func fakeNullConnIDEvent() database.UpsertConnectionLogParams {
 		WorkspaceID:      uuid.New(),
 		WorkspaceName:    "test-workspace",
 		AgentName:        "test-agent",
-		Type:             database.ConnectionTypeWorkspaceApp,
+		Type:             string(codersdk.ConnectionTypeWorkspaceApp),
 		ConnectionID:     uuid.NullUUID{},
 		ConnectionStatus: database.ConnectionStatusConnected,
 	}

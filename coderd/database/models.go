@@ -1974,79 +1974,6 @@ func AllConnectionStatusValues() []ConnectionStatus {
 	}
 }
 
-type ConnectionType string
-
-const (
-	ConnectionTypeSsh             ConnectionType = "ssh"
-	ConnectionTypeVscode          ConnectionType = "vscode"
-	ConnectionTypeJetbrains       ConnectionType = "jetbrains"
-	ConnectionTypeReconnectingPty ConnectionType = "reconnecting_pty"
-	ConnectionTypeWorkspaceApp    ConnectionType = "workspace_app"
-	ConnectionTypePortForwarding  ConnectionType = "port_forwarding"
-	ConnectionTypeTunnel          ConnectionType = "tunnel"
-)
-
-func (e *ConnectionType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ConnectionType(s)
-	case string:
-		*e = ConnectionType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ConnectionType: %T", src)
-	}
-	return nil
-}
-
-type NullConnectionType struct {
-	ConnectionType ConnectionType `json:"connection_type"`
-	Valid          bool           `json:"valid"` // Valid is true if ConnectionType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullConnectionType) Scan(value interface{}) error {
-	if value == nil {
-		ns.ConnectionType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ConnectionType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullConnectionType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ConnectionType), nil
-}
-
-func (e ConnectionType) Valid() bool {
-	switch e {
-	case ConnectionTypeSsh,
-		ConnectionTypeVscode,
-		ConnectionTypeJetbrains,
-		ConnectionTypeReconnectingPty,
-		ConnectionTypeWorkspaceApp,
-		ConnectionTypePortForwarding,
-		ConnectionTypeTunnel:
-		return true
-	}
-	return false
-}
-
-func AllConnectionTypeValues() []ConnectionType {
-	return []ConnectionType{
-		ConnectionTypeSsh,
-		ConnectionTypeVscode,
-		ConnectionTypeJetbrains,
-		ConnectionTypeReconnectingPty,
-		ConnectionTypeWorkspaceApp,
-		ConnectionTypePortForwarding,
-		ConnectionTypeTunnel,
-	}
-}
-
 type CorsBehavior string
 
 const (
@@ -5333,15 +5260,16 @@ type ChatUserModelOverride struct {
 }
 
 type ConnectionLog struct {
-	ID               uuid.UUID      `db:"id" json:"id"`
-	ConnectTime      time.Time      `db:"connect_time" json:"connect_time"`
-	OrganizationID   uuid.UUID      `db:"organization_id" json:"organization_id"`
-	WorkspaceOwnerID uuid.UUID      `db:"workspace_owner_id" json:"workspace_owner_id"`
-	WorkspaceID      uuid.UUID      `db:"workspace_id" json:"workspace_id"`
-	WorkspaceName    string         `db:"workspace_name" json:"workspace_name"`
-	AgentName        string         `db:"agent_name" json:"agent_name"`
-	Type             ConnectionType `db:"type" json:"type"`
-	Ip               pqtype.Inet    `db:"ip" json:"ip"`
+	ID               uuid.UUID `db:"id" json:"id"`
+	ConnectTime      time.Time `db:"connect_time" json:"connect_time"`
+	OrganizationID   uuid.UUID `db:"organization_id" json:"organization_id"`
+	WorkspaceOwnerID uuid.UUID `db:"workspace_owner_id" json:"workspace_owner_id"`
+	WorkspaceID      uuid.UUID `db:"workspace_id" json:"workspace_id"`
+	WorkspaceName    string    `db:"workspace_name" json:"workspace_name"`
+	AgentName        string    `db:"agent_name" json:"agent_name"`
+	// The app that connected, such as cursor, or a web connection type. Older rows hold the app family.
+	Type string      `db:"type" json:"type"`
+	Ip   pqtype.Inet `db:"ip" json:"ip"`
 	// Either the HTTP status code of the web request, or the exit code of an SSH connection. For non-web connections, this is Null until we receive a disconnect event for the same connection_id.
 	Code sql.NullInt32 `db:"code" json:"code"`
 	// Null for SSH events. For web connections, this is the User-Agent header from the request.

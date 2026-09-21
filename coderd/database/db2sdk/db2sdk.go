@@ -998,16 +998,16 @@ func ChatRoleActions(role codersdk.ChatRole) []policy.Action {
 	return []policy.Action{}
 }
 
-func ConnectionLogConnectionTypeFromAgentProtoConnectionType(typ agentproto.Connection_Type) (database.ConnectionType, error) {
+func ConnectionLogConnectionTypeFromAgentProtoConnectionType(typ agentproto.Connection_Type) (string, error) {
 	switch typ {
 	case agentproto.Connection_SSH:
-		return database.ConnectionTypeSsh, nil
+		return string(codersdk.ConnectionTypeSSH), nil
 	case agentproto.Connection_JETBRAINS:
-		return database.ConnectionTypeJetbrains, nil
+		return string(codersdk.ConnectionTypeJetBrains), nil
 	case agentproto.Connection_VSCODE:
-		return database.ConnectionTypeVscode, nil
+		return string(codersdk.ConnectionTypeVSCode), nil
 	case agentproto.Connection_RECONNECTING_PTY:
-		return database.ConnectionTypeReconnectingPty, nil
+		return string(codersdk.ConnectionTypeReconnectingPTY), nil
 	default:
 		// Also Connection_TYPE_UNSPECIFIED, no mapping.
 		return "", xerrors.Errorf("unknown agent connection type %q", typ)

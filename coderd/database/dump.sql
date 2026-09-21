@@ -387,16 +387,6 @@ CREATE TYPE connection_status AS ENUM (
     'disconnected'
 );
 
-CREATE TYPE connection_type AS ENUM (
-    'ssh',
-    'vscode',
-    'jetbrains',
-    'reconnecting_pty',
-    'workspace_app',
-    'port_forwarding',
-    'tunnel'
-);
-
 CREATE TYPE cors_behavior AS ENUM (
     'simple',
     'passthru'
@@ -2345,7 +2335,7 @@ CREATE TABLE connection_logs (
     workspace_id uuid NOT NULL,
     workspace_name text NOT NULL,
     agent_name text NOT NULL,
-    type connection_type NOT NULL,
+    type text NOT NULL,
     ip inet,
     code integer,
     user_agent text,
@@ -2355,6 +2345,8 @@ CREATE TABLE connection_logs (
     disconnect_time timestamp with time zone,
     disconnect_reason text
 );
+
+COMMENT ON COLUMN connection_logs.type IS 'The app that connected, such as cursor, or a web connection type. Older rows hold the app family.';
 
 COMMENT ON COLUMN connection_logs.code IS 'Either the HTTP status code of the web request, or the exit code of an SSH connection. For non-web connections, this is Null until we receive a disconnect event for the same connection_id.';
 

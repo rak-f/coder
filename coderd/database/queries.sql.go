@@ -14175,7 +14175,7 @@ FROM (
         unnest($5::uuid[]) AS workspace_id,
         unnest($6::text[]) AS workspace_name,
         unnest($7::text[]) AS agent_name,
-        unnest($8::connection_type[]) AS type,
+        unnest($8::text[]) AS type,
         unnest($9::int4[]) AS code,
         unnest($10::bool[]) AS code_valid,
         unnest($11::inet[]) AS ip,
@@ -14216,23 +14216,23 @@ DO UPDATE SET
 `
 
 type BatchUpsertConnectionLogsParams struct {
-	ID               []uuid.UUID      `db:"id" json:"id"`
-	ConnectTime      []time.Time      `db:"connect_time" json:"connect_time"`
-	OrganizationID   []uuid.UUID      `db:"organization_id" json:"organization_id"`
-	WorkspaceOwnerID []uuid.UUID      `db:"workspace_owner_id" json:"workspace_owner_id"`
-	WorkspaceID      []uuid.UUID      `db:"workspace_id" json:"workspace_id"`
-	WorkspaceName    []string         `db:"workspace_name" json:"workspace_name"`
-	AgentName        []string         `db:"agent_name" json:"agent_name"`
-	Type             []ConnectionType `db:"type" json:"type"`
-	Code             []int32          `db:"code" json:"code"`
-	CodeValid        []bool           `db:"code_valid" json:"code_valid"`
-	Ip               []pqtype.Inet    `db:"ip" json:"ip"`
-	UserAgent        []string         `db:"user_agent" json:"user_agent"`
-	UserID           []uuid.UUID      `db:"user_id" json:"user_id"`
-	SlugOrPort       []string         `db:"slug_or_port" json:"slug_or_port"`
-	ConnectionID     []uuid.UUID      `db:"connection_id" json:"connection_id"`
-	DisconnectReason []string         `db:"disconnect_reason" json:"disconnect_reason"`
-	DisconnectTime   []time.Time      `db:"disconnect_time" json:"disconnect_time"`
+	ID               []uuid.UUID   `db:"id" json:"id"`
+	ConnectTime      []time.Time   `db:"connect_time" json:"connect_time"`
+	OrganizationID   []uuid.UUID   `db:"organization_id" json:"organization_id"`
+	WorkspaceOwnerID []uuid.UUID   `db:"workspace_owner_id" json:"workspace_owner_id"`
+	WorkspaceID      []uuid.UUID   `db:"workspace_id" json:"workspace_id"`
+	WorkspaceName    []string      `db:"workspace_name" json:"workspace_name"`
+	AgentName        []string      `db:"agent_name" json:"agent_name"`
+	Type             []string      `db:"type" json:"type"`
+	Code             []int32       `db:"code" json:"code"`
+	CodeValid        []bool        `db:"code_valid" json:"code_valid"`
+	Ip               []pqtype.Inet `db:"ip" json:"ip"`
+	UserAgent        []string      `db:"user_agent" json:"user_agent"`
+	UserID           []uuid.UUID   `db:"user_id" json:"user_id"`
+	SlugOrPort       []string      `db:"slug_or_port" json:"slug_or_port"`
+	ConnectionID     []uuid.UUID   `db:"connection_id" json:"connection_id"`
+	DisconnectReason []string      `db:"disconnect_reason" json:"disconnect_reason"`
+	DisconnectTime   []time.Time   `db:"disconnect_time" json:"disconnect_time"`
 }
 
 func (q *sqlQuerier) BatchUpsertConnectionLogs(ctx context.Context, arg BatchUpsertConnectionLogsParams) error {
@@ -14300,62 +14300,68 @@ SELECT COUNT(*) AS count FROM (
 				)
 			ELSE true
 		END
-		-- Filter by type
+		-- Filter by type.
 		AND CASE
-			WHEN $5 :: text != '' THEN
-				type = $5 :: connection_type
+			WHEN cardinality($5 :: text[]) > 0 THEN
+				type = ANY($5 :: text[])
+			ELSE true
+		END
+		-- Filter by excluded type.
+		AND CASE
+			WHEN cardinality($6 :: text[]) > 0 THEN
+				type != ALL($6 :: text[])
 			ELSE true
 		END
 		-- Filter by user_id
 		AND CASE
-			WHEN $6 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-				user_id = $6
+			WHEN $7 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+				user_id = $7
 			ELSE true
 		END
 		-- Filter by username
 		AND CASE
-			WHEN $7 :: text != '' THEN
+			WHEN $8 :: text != '' THEN
 				user_id = (
 					SELECT id FROM users
-					WHERE lower(username) = lower($7) AND deleted = false
+					WHERE lower(username) = lower($8) AND deleted = false
 				)
 			ELSE true
 		END
 		-- Filter by user_email
 		AND CASE
-			WHEN $8 :: text != '' THEN
-				users.email = $8
+			WHEN $9 :: text != '' THEN
+				users.email = $9
 			ELSE true
 		END
 		-- Filter by connected_after
 		AND CASE
-			WHEN $9 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
-				connect_time >= $9
+			WHEN $10 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
+				connect_time >= $10
 			ELSE true
 		END
 		-- Filter by connected_before
 		AND CASE
-			WHEN $10 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
-				connect_time <= $10
+			WHEN $11 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
+				connect_time <= $11
 			ELSE true
 		END
 		-- Filter by workspace_id
 		AND CASE
-			WHEN $11 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-				connection_logs.workspace_id = $11
+			WHEN $12 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+				connection_logs.workspace_id = $12
 			ELSE true
 		END
 		-- Filter by connection_id
 		AND CASE
-			WHEN $12 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-				connection_logs.connection_id = $12
+			WHEN $13 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+				connection_logs.connection_id = $13
 			ELSE true
 		END
 		-- Filter by whether the session has a disconnect_time
 		AND CASE
-			WHEN $13 :: text != '' THEN
-				(($13 = 'ongoing' AND disconnect_time IS NULL) OR
-				($13 = 'completed' AND disconnect_time IS NOT NULL)) AND
+			WHEN $14 :: text != '' THEN
+				(($14 = 'ongoing' AND disconnect_time IS NULL) OR
+				($14 = 'completed' AND disconnect_time IS NOT NULL)) AND
 				-- Exclude point-in-time events reported by coderd, since we
 				-- don't know their close time.
 				"type" NOT IN ('workspace_app', 'port_forwarding', 'tunnel')
@@ -14365,7 +14371,7 @@ SELECT COUNT(*) AS count FROM (
 		-- CountAuthorizedConnectionLogs
 		-- @authorize_filter
 	-- NOTE: See the CountAuditLogs LIMIT note.
-	LIMIT NULLIF($14::int, 0) + 1
+	LIMIT NULLIF($15::int, 0) + 1
 ) AS limited_count
 `
 
@@ -14374,7 +14380,8 @@ type CountConnectionLogsParams struct {
 	WorkspaceOwner      string    `db:"workspace_owner" json:"workspace_owner"`
 	WorkspaceOwnerID    uuid.UUID `db:"workspace_owner_id" json:"workspace_owner_id"`
 	WorkspaceOwnerEmail string    `db:"workspace_owner_email" json:"workspace_owner_email"`
-	Type                string    `db:"type" json:"type"`
+	Types               []string  `db:"types" json:"types"`
+	ExcludedTypes       []string  `db:"excluded_types" json:"excluded_types"`
 	UserID              uuid.UUID `db:"user_id" json:"user_id"`
 	Username            string    `db:"username" json:"username"`
 	UserEmail           string    `db:"user_email" json:"user_email"`
@@ -14392,7 +14399,8 @@ func (q *sqlQuerier) CountConnectionLogs(ctx context.Context, arg CountConnectio
 		arg.WorkspaceOwner,
 		arg.WorkspaceOwnerID,
 		arg.WorkspaceOwnerEmail,
-		arg.Type,
+		pq.Array(arg.Types),
+		pq.Array(arg.ExcludedTypes),
 		arg.UserID,
 		arg.Username,
 		arg.UserEmail,
@@ -14495,62 +14503,68 @@ WHERE
 			)
 		ELSE true
 	END
-	-- Filter by type
+	-- Filter by type.
 	AND CASE
-		WHEN $5 :: text != '' THEN
-			type = $5 :: connection_type
+		WHEN cardinality($5 :: text[]) > 0 THEN
+			type = ANY($5 :: text[])
+		ELSE true
+	END
+	-- Filter by excluded type.
+	AND CASE
+		WHEN cardinality($6 :: text[]) > 0 THEN
+			type != ALL($6 :: text[])
 		ELSE true
 	END
 	-- Filter by user_id
 	AND CASE
-		WHEN $6 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-			user_id = $6
+		WHEN $7 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+			user_id = $7
 		ELSE true
 	END
 	-- Filter by username
 	AND CASE
-		WHEN $7 :: text != '' THEN
+		WHEN $8 :: text != '' THEN
 			user_id = (
 				SELECT id FROM users
-				WHERE lower(username) = lower($7) AND deleted = false
+				WHERE lower(username) = lower($8) AND deleted = false
 			)
 		ELSE true
 	END
 	-- Filter by user_email
 	AND CASE
-		WHEN $8 :: text != '' THEN
-			users.email = $8
+		WHEN $9 :: text != '' THEN
+			users.email = $9
 		ELSE true
 	END
 	-- Filter by connected_after
 	AND CASE
-		WHEN $9 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
-			connect_time >= $9
+		WHEN $10 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
+			connect_time >= $10
 		ELSE true
 	END
 	-- Filter by connected_before
 	AND CASE
-		WHEN $10 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
-			connect_time <= $10
+		WHEN $11 :: timestamp with time zone != '0001-01-01 00:00:00Z' THEN
+			connect_time <= $11
 		ELSE true
 	END
 	-- Filter by workspace_id
 	AND CASE
-		WHEN $11 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-			connection_logs.workspace_id = $11
+		WHEN $12 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+			connection_logs.workspace_id = $12
 		ELSE true
 	END
 	-- Filter by connection_id
 	AND CASE
-		WHEN $12 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-			connection_logs.connection_id = $12
+		WHEN $13 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
+			connection_logs.connection_id = $13
 		ELSE true
 	END
 	-- Filter by whether the session has a disconnect_time
 	AND CASE
-		WHEN $13 :: text != '' THEN
-			(($13 = 'ongoing' AND disconnect_time IS NULL) OR
-			($13 = 'completed' AND disconnect_time IS NOT NULL)) AND
+		WHEN $14 :: text != '' THEN
+			(($14 = 'ongoing' AND disconnect_time IS NULL) OR
+			($14 = 'completed' AND disconnect_time IS NOT NULL)) AND
 			-- Exclude point-in-time events reported by coderd, since we
 			-- don't know their close time.
 			"type" NOT IN ('workspace_app', 'port_forwarding', 'tunnel')
@@ -14565,9 +14579,9 @@ LIMIT
 	-- a limit of 0 means "no limit". The connection log table is unbounded
 	-- in size, and is expected to be quite large. Implement a default
 	-- limit of 100 to prevent accidental excessively large queries.
-	COALESCE(NULLIF($15 :: int, 0), 100)
+	COALESCE(NULLIF($16 :: int, 0), 100)
 OFFSET
-	$14
+	$15
 `
 
 type GetConnectionLogsOffsetParams struct {
@@ -14575,7 +14589,8 @@ type GetConnectionLogsOffsetParams struct {
 	WorkspaceOwner      string    `db:"workspace_owner" json:"workspace_owner"`
 	WorkspaceOwnerID    uuid.UUID `db:"workspace_owner_id" json:"workspace_owner_id"`
 	WorkspaceOwnerEmail string    `db:"workspace_owner_email" json:"workspace_owner_email"`
-	Type                string    `db:"type" json:"type"`
+	Types               []string  `db:"types" json:"types"`
+	ExcludedTypes       []string  `db:"excluded_types" json:"excluded_types"`
 	UserID              uuid.UUID `db:"user_id" json:"user_id"`
 	Username            string    `db:"username" json:"username"`
 	UserEmail           string    `db:"user_email" json:"user_email"`
@@ -14614,7 +14629,8 @@ func (q *sqlQuerier) GetConnectionLogsOffset(ctx context.Context, arg GetConnect
 		arg.WorkspaceOwner,
 		arg.WorkspaceOwnerID,
 		arg.WorkspaceOwnerEmail,
-		arg.Type,
+		pq.Array(arg.Types),
+		pq.Array(arg.ExcludedTypes),
 		arg.UserID,
 		arg.Username,
 		arg.UserEmail,

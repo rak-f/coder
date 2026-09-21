@@ -5444,7 +5444,9 @@ AuthorizationObject can represent a "set" of objects, such as: all workspaces in
     "disconnect_time": "2019-08-24T14:15:22Z",
     "exit_code": 0
   },
-  "type": "ssh",
+  "type": "string",
+  "type_display_name": "string",
+  "type_family": "ssh",
   "web_info": {
     "slug_or_port": "string",
     "status_code": 0,
@@ -5484,20 +5486,22 @@ AuthorizationObject can represent a "set" of objects, such as: all workspaces in
 
 ### Properties
 
-| Name                       | Type                                                           | Required | Restrictions | Description                                                                                                                                              |
-|----------------------------|----------------------------------------------------------------|----------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `agent_name`               | string                                                         | false    |              |                                                                                                                                                          |
-| `connect_time`             | string                                                         | false    |              |                                                                                                                                                          |
-| `id`                       | string                                                         | false    |              |                                                                                                                                                          |
-| `ip`                       | string                                                         | false    |              |                                                                                                                                                          |
-| `organization`             | [codersdk.MinimalOrganization](#codersdkminimalorganization)   | false    |              |                                                                                                                                                          |
-| `ssh_info`                 | [codersdk.ConnectionLogSSHInfo](#codersdkconnectionlogsshinfo) | false    |              | Ssh info is only set when `type` is one of: - `ConnectionTypeSSH` - `ConnectionTypeReconnectingPTY` - `ConnectionTypeVSCode` - `ConnectionTypeJetBrains` |
-| `type`                     | [codersdk.ConnectionType](#codersdkconnectiontype)             | false    |              |                                                                                                                                                          |
-| `web_info`                 | [codersdk.ConnectionLogWebInfo](#codersdkconnectionlogwebinfo) | false    |              | Web info is only set when `type` is one of: - `ConnectionTypePortForwarding` - `ConnectionTypeWorkspaceApp` - `ConnectionTypeTunnel`                     |
-| `workspace_id`             | string                                                         | false    |              |                                                                                                                                                          |
-| `workspace_name`           | string                                                         | false    |              |                                                                                                                                                          |
-| `workspace_owner_id`       | string                                                         | false    |              |                                                                                                                                                          |
-| `workspace_owner_username` | string                                                         | false    |              |                                                                                                                                                          |
+| Name                       | Type                                                           | Required | Restrictions | Description                                                                                                                          |
+|----------------------------|----------------------------------------------------------------|----------|--------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `agent_name`               | string                                                         | false    |              |                                                                                                                                      |
+| `connect_time`             | string                                                         | false    |              |                                                                                                                                      |
+| `id`                       | string                                                         | false    |              |                                                                                                                                      |
+| `ip`                       | string                                                         | false    |              |                                                                                                                                      |
+| `organization`             | [codersdk.MinimalOrganization](#codersdkminimalorganization)   | false    |              |                                                                                                                                      |
+| `ssh_info`                 | [codersdk.ConnectionLogSSHInfo](#codersdkconnectionlogsshinfo) | false    |              | Ssh info is set for every other `type`.                                                                                              |
+| `type`                     | string                                                         | false    |              | Type is the app that connected, such as "cursor", or a web ConnectionType, such as "port_forwarding".                                |
+| `type_display_name`        | string                                                         | false    |              |                                                                                                                                      |
+| `type_family`              | [codersdk.ConnectionType](#codersdkconnectiontype)             | false    |              |                                                                                                                                      |
+| `web_info`                 | [codersdk.ConnectionLogWebInfo](#codersdkconnectionlogwebinfo) | false    |              | Web info is only set when `type` is one of: - `ConnectionTypePortForwarding` - `ConnectionTypeWorkspaceApp` - `ConnectionTypeTunnel` |
+| `workspace_id`             | string                                                         | false    |              |                                                                                                                                      |
+| `workspace_name`           | string                                                         | false    |              |                                                                                                                                      |
+| `workspace_owner_id`       | string                                                         | false    |              |                                                                                                                                      |
+| `workspace_owner_username` | string                                                         | false    |              |                                                                                                                                      |
 
 ## codersdk.ConnectionLogResponse
 
@@ -5521,7 +5525,9 @@ AuthorizationObject can represent a "set" of objects, such as: all workspaces in
         "disconnect_time": "2019-08-24T14:15:22Z",
         "exit_code": 0
       },
-      "type": "ssh",
+      "type": "string",
+      "type_display_name": "string",
+      "type_family": "ssh",
       "web_info": {
         "slug_or_port": "string",
         "status_code": 0,
@@ -5645,9 +5651,9 @@ AuthorizationObject can represent a "set" of objects, such as: all workspaces in
 
 #### Enumerated Values
 
-| Value(s)                                                                                       |
-|------------------------------------------------------------------------------------------------|
-| `jetbrains`, `port_forwarding`, `reconnecting_pty`, `ssh`, `tunnel`, `vscode`, `workspace_app` |
+| Value(s)                                                                                                  |
+|-----------------------------------------------------------------------------------------------------------|
+| `jetbrains`, `port_forwarding`, `reconnecting_pty`, `ssh`, `tunnel`, `unknown`, `vscode`, `workspace_app` |
 
 ## codersdk.ConvertLoginRequest
 

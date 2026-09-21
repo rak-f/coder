@@ -4115,3 +4115,66 @@ func TestMigration000599OAuth2RedirectURIsPrimary(t *testing.T) {
 	require.NoError(t, err)
 	assertRows()
 }
+
+// TestMigration000600ConnectionLogsTypeTextDown checks the fold back into
+// the families the enum holds.
+func TestMigration000600ConnectionLogsTypeTextDown(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	sqlDB := testSQLDB(t)
+	require.NoError(t, migrations.Up(sqlDB))
+	db := database.New(sqlDB)
+	ctx := testutil.Context(t, testutil.WaitLong)
+
+	org := dbgen.Organization(t, db, database.Organization{})
+	owner := dbgen.User(t, db, database.User{})
+	tpl := dbgen.Template(t, db, database.Template{
+		OrganizationID: org.ID,
+		CreatedBy:      owner.ID,
+	})
+	ws := dbgen.Workspace(t, db, database.WorkspaceTable{
+		OrganizationID: org.ID,
+		OwnerID:        owner.ID,
+		TemplateID:     tpl.ID,
+	})
+
+	folds := map[string]string{
+		"cursor":    "vscode",    // a registered app folds into its family
+		"zed":       "ssh",       // including one outside the VS Code family
+		"a_new_ide": "ssh",       // an app the snapshot predates
+		"jetbrains": "jetbrains", // a family passes through
+		"tunnel":    "tunnel",    // as does a type that never was an app
+	}
+
+	ids := make(map[string]uuid.UUID, len(folds))
+	for connType := range folds {
+		log := dbgen.ConnectionLog(t, db, database.UpsertConnectionLogParams{
+			OrganizationID:   org.ID,
+			WorkspaceOwnerID: ws.OwnerID,
+			WorkspaceID:      ws.ID,
+			WorkspaceName:    ws.Name,
+			AgentName:        "agent",
+			Type:             connType,
+			ConnectionStatus: database.ConnectionStatusConnected,
+			ConnectionID:     uuid.NullUUID{UUID: uuid.New(), Valid: true},
+		})
+		ids[connType] = log.ID
+	}
+
+	downSQL, err := os.ReadFile("000600_connection_logs_type_text.down.sql")
+	require.NoError(t, err)
+	_, err = sqlDB.ExecContext(ctx, string(downSQL))
+	require.NoError(t, err)
+
+	for connType, want := range folds {
+		var got string
+		err := sqlDB.QueryRowContext(ctx,
+			`SELECT type::text FROM connection_logs WHERE id = $1`, ids[connType],
+		).Scan(&got)
+		require.NoError(t, err)
+		require.Equal(t, want, got, "type %q", connType)
+	}
+}

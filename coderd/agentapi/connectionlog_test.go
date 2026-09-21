@@ -167,7 +167,7 @@ func TestConnectionLog(t *testing.T) {
 	}
 }
 
-func agentProtoConnectionTypeToConnectionLog(t *testing.T, typ agentproto.Connection_Type) database.ConnectionType {
+func agentProtoConnectionTypeToConnectionLog(t *testing.T, typ agentproto.Connection_Type) string {
 	a, err := db2sdk.ConnectionLogConnectionTypeFromAgentProtoConnectionType(typ)
 	require.NoError(t, err)
 	return a

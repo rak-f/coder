@@ -502,7 +502,9 @@ curl -X GET http://coder-server:8080/api/v2/connectionlog?limit=0 \
         "disconnect_time": "2019-08-24T14:15:22Z",
         "exit_code": 0
       },
-      "type": "ssh",
+      "type": "string",
+      "type_display_name": "string",
+      "type_family": "ssh",
       "web_info": {
         "slug_or_port": "string",
         "status_code": 0,

@@ -59,10 +59,16 @@ WHERE
 			)
 		ELSE true
 	END
-	-- Filter by type
+	-- Filter by type.
 	AND CASE
-		WHEN @type :: text != '' THEN
-			type = @type :: connection_type
+		WHEN cardinality(@types :: text[]) > 0 THEN
+			type = ANY(@types :: text[])
+		ELSE true
+	END
+	-- Filter by excluded type.
+	AND CASE
+		WHEN cardinality(@excluded_types :: text[]) > 0 THEN
+			type != ALL(@excluded_types :: text[])
 		ELSE true
 	END
 	-- Filter by user_id
@@ -175,10 +181,16 @@ SELECT COUNT(*) AS count FROM (
 				)
 			ELSE true
 		END
-		-- Filter by type
+		-- Filter by type.
 		AND CASE
-			WHEN @type :: text != '' THEN
-				type = @type :: connection_type
+			WHEN cardinality(@types :: text[]) > 0 THEN
+				type = ANY(@types :: text[])
+			ELSE true
+		END
+		-- Filter by excluded type.
+		AND CASE
+			WHEN cardinality(@excluded_types :: text[]) > 0 THEN
+				type != ALL(@excluded_types :: text[])
 			ELSE true
 		END
 		-- Filter by user_id
@@ -289,7 +301,7 @@ FROM (
         unnest(sqlc.arg('workspace_id')::uuid[]) AS workspace_id,
         unnest(sqlc.arg('workspace_name')::text[]) AS workspace_name,
         unnest(sqlc.arg('agent_name')::text[]) AS agent_name,
-        unnest(sqlc.arg('type')::connection_type[]) AS type,
+        unnest(sqlc.arg('type')::text[]) AS type,
         unnest(sqlc.arg('code')::int4[]) AS code,
         unnest(sqlc.arg('code_valid')::bool[]) AS code_valid,
         unnest(sqlc.arg('ip')::inet[]) AS ip,

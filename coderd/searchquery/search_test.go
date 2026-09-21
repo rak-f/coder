@@ -669,7 +669,7 @@ func TestSearchConnectionLogs(t *testing.T) {
 			OrganizationID:      orgID,
 			WorkspaceOwner:      "testowner",
 			WorkspaceOwnerEmail: "owner@example.com",
-			Type:                string(database.ConnectionTypePortForwarding),
+			Types:               []string{string(codersdk.ConnectionTypePortForwarding)},
 			Username:            "testuser",
 			UserEmail:           "test@example.com",
 			ConnectedAfter:      time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -680,6 +680,29 @@ func TestSearchConnectionLogs(t *testing.T) {
 		}
 
 		require.Equal(t, expected, values)
+	})
+
+	// A family matches every app in it, and only those apps.
+	t.Run("Type", func(t *testing.T) {
+		t.Parallel()
+
+		db, _ := dbtestutil.NewDB(t)
+
+		values, _, errs := searchquery.ConnectionLogs(context.Background(), db, "type:vscode", database.APIKey{})
+		require.Len(t, errs, 0)
+		require.Contains(t, values.Types, "vscode")
+		require.Contains(t, values.Types, "cursor")
+		require.NotContains(t, values.Types, "jetbrains")
+
+		values, _, errs = searchquery.ConnectionLogs(context.Background(), db, "type:unknown", database.APIKey{})
+		require.Len(t, errs, 0)
+		require.Empty(t, values.Types)
+		require.Contains(t, values.ExcludedTypes, "cursor")
+		require.Contains(t, values.ExcludedTypes, "tunnel")
+
+		// An app name is not a family, so it is not a filter.
+		_, _, errs = searchquery.ConnectionLogs(context.Background(), db, "type:cursor", database.APIKey{})
+		require.Len(t, errs, 1)
 	})
 
 	t.Run("Me", func(t *testing.T) {

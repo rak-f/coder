@@ -104,7 +104,6 @@ func ConnectionLogs(ctx context.Context, db database.Store, query string, apiKey
 		OrganizationID:      parseOrganization(ctx, db, parser, values, "organization"),
 		WorkspaceOwner:      parser.String(values, "", "workspace_owner"),
 		WorkspaceOwnerEmail: parser.String(values, "", "workspace_owner_email"),
-		Type:                string(httpapi.ParseCustom(parser, values, "", "type", httpapi.ParseEnum[database.ConnectionType])),
 		Username:            parser.String(values, "", "username"),
 		UserEmail:           parser.String(values, "", "user_email"),
 		ConnectedAfter:      parser.Time3339Nano(values, time.Time{}, "connected_after"),
@@ -113,6 +112,8 @@ func ConnectionLogs(ctx context.Context, db database.Store, query string, apiKey
 		ConnectionID:        parser.UUID(values, uuid.Nil, "connection_id"),
 		Status:              string(httpapi.ParseCustom(parser, values, "", "status", httpapi.ParseEnum[codersdk.ConnectionLogStatus])),
 	}
+
+	filter.Types, filter.ExcludedTypes = parseConnectionTypes(parser, values, "type")
 
 	if filter.Username == "me" {
 		filter.UserID = apiKey.UserID
@@ -131,7 +132,8 @@ func ConnectionLogs(ctx context.Context, db database.Store, query string, apiKey
 		WorkspaceOwner:      filter.WorkspaceOwner,
 		WorkspaceOwnerID:    filter.WorkspaceOwnerID,
 		WorkspaceOwnerEmail: filter.WorkspaceOwnerEmail,
-		Type:                filter.Type,
+		Types:               filter.Types,
+		ExcludedTypes:       filter.ExcludedTypes,
 		UserID:              filter.UserID,
 		Username:            filter.Username,
 		UserEmail:           filter.UserEmail,
@@ -707,6 +709,22 @@ func parseOrganization(ctx context.Context, db database.Store, parser *httpapi.Q
 		}
 		return organization.ID, nil
 	})
+}
+
+// parseConnectionTypes returns the values a `type:` filter matches and
+// excludes.
+func parseConnectionTypes(parser *httpapi.QueryParamParser, vals url.Values, queryParam string) (types, excluded []string) {
+	typ := httpapi.ParseCustom(parser, vals, "", queryParam, func(v string) (codersdk.ConnectionType, error) {
+		typ := codersdk.ConnectionType(v)
+		if v != "" && !slices.Contains(codersdk.FilterableConnectionTypes(), typ) {
+			return "", xerrors.Errorf("%q is not a valid value", v)
+		}
+		return typ, nil
+	})
+	if typ == codersdk.ConnectionTypeUnknown {
+		return nil, codersdk.KnownConnectionLogTypes()
+	}
+	return typ.MatchingTypes(), nil
 }
 
 func parseUser(ctx context.Context, db database.Store, parser *httpapi.QueryParamParser, vals url.Values, queryParam string, actorID uuid.UUID) uuid.UUID {
