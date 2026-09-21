@@ -19736,6 +19736,9 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
+                "title_source": {
+                    "$ref": "#/definitions/codersdk.ChatTitleSource"
+                },
                 "updated_at": {
                     "type": "string",
                     "format": "date-time"
@@ -21470,6 +21473,19 @@ const docTemplate = `{
                 }
             }
         },
+        "codersdk.ChatTitleSource": {
+            "type": "string",
+            "enum": [
+                "fallback",
+                "generated",
+                "user"
+            ],
+            "x-enum-varnames": [
+                "ChatTitleSourceFallback",
+                "ChatTitleSourceGenerated",
+                "ChatTitleSourceUser"
+            ]
+        },
         "codersdk.ChatUnsupportedProvider": {
             "type": "object",
             "properties": {
@@ -21543,6 +21559,7 @@ const docTemplate = `{
                 "deleted",
                 "diff_status_change",
                 "action_required",
+                "cost_change",
                 "context_dirty"
             ],
             "x-enum-varnames": [
@@ -21554,6 +21571,7 @@ const docTemplate = `{
                 "ChatWatchEventKindDeleted",
                 "ChatWatchEventKindDiffStatusChange",
                 "ChatWatchEventKindActionRequired",
+                "ChatWatchEventKindCostChange",
                 "ChatWatchEventKindContextDirty"
             ]
         },
@@ -21956,6 +21974,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "system_prompt": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title, when set, is trimmed and stored as the user title; automatic\ntitle generation is skipped. When omitted, the title is derived from\nthe first prompt and later replaced by a generated title.",
                     "type": "string"
                 },
                 "unsafe_dynamic_tools": {
