@@ -30,6 +30,7 @@ import (
 	"github.com/coder/coder/v2/coderd/workspaceapps/appurl"
 	"github.com/coder/coder/v2/coderd/x/chatd/chatprompt"
 	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/coder/v2/codersdk/agentsdk"
 	"github.com/coder/coder/v2/provisionersdk/proto"
 	"github.com/coder/coder/v2/tailnet"
 	previewtypes "github.com/coder/preview/types"
@@ -998,20 +999,12 @@ func ChatRoleActions(role codersdk.ChatRole) []policy.Action {
 	return []policy.Action{}
 }
 
-func ConnectionLogConnectionTypeFromAgentProtoConnectionType(typ agentproto.Connection_Type) (string, error) {
-	switch typ {
-	case agentproto.Connection_SSH:
-		return string(codersdk.ConnectionTypeSSH), nil
-	case agentproto.Connection_JETBRAINS:
-		return string(codersdk.ConnectionTypeJetBrains), nil
-	case agentproto.Connection_VSCODE:
-		return string(codersdk.ConnectionTypeVSCode), nil
-	case agentproto.Connection_RECONNECTING_PTY:
-		return string(codersdk.ConnectionTypeReconnectingPTY), nil
-	default:
-		// Also Connection_TYPE_UNSPECIFIED, no mapping.
-		return "", xerrors.Errorf("unknown agent connection type %q", typ)
+func ConnectionLogTypeFromAgentProto(conn *agentproto.Connection) (string, error) {
+	if appName := conn.GetAppName(); appName != "" {
+		return codersdk.NormalizeAppName(appName), nil
 	}
+	family, err := agentsdk.AppFamilyFromProto(conn.GetType())
+	return string(family), err
 }
 
 func ConnectionLogStatusFromAgentProtoConnectionAction(action agentproto.Connection_Action) (database.ConnectionStatus, error) {

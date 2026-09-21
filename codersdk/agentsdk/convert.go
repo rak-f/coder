@@ -416,6 +416,20 @@ func ProtoFromLifecycleState(s codersdk.WorkspaceAgentLifecycle) (proto.Lifecycl
 	return proto.Lifecycle_State(caps), nil
 }
 
+func AppFamilyFromProto(t proto.Connection_Type) (codersdk.AppFamilyName, error) {
+	name, ok := proto.Connection_Type_name[int32(t)]
+	if !ok || t == proto.Connection_TYPE_UNSPECIFIED {
+		return "", xerrors.Errorf("unknown connection type: %d", t)
+	}
+	return codersdk.AppFamilyName(strings.ToLower(name)), nil
+}
+
+// ProtoFromAppFamily returns TYPE_UNSPECIFIED for a family the frozen enum
+// lacks.
+func ProtoFromAppFamily(f codersdk.AppFamilyName) proto.Connection_Type {
+	return proto.Connection_Type(proto.Connection_Type_value[strings.ToUpper(string(f))])
+}
+
 func DevcontainersFromProto(pdcs []*proto.WorkspaceAgentDevcontainer) ([]codersdk.WorkspaceAgentDevcontainer, error) {
 	ret := make([]codersdk.WorkspaceAgentDevcontainer, len(pdcs))
 	for i, pdc := range pdcs {

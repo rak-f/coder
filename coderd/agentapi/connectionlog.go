@@ -40,7 +40,7 @@ func (a *ConnLogAPI) ReportConnection(ctx context.Context, req *agentproto.Repor
 	if err != nil {
 		return nil, err
 	}
-	connectionType, err := db2sdk.ConnectionLogConnectionTypeFromAgentProtoConnectionType(req.GetConnection().GetType())
+	logType, err := db2sdk.ConnectionLogTypeFromAgentProto(req.GetConnection())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (a *ConnLogAPI) ReportConnection(ctx context.Context, req *agentproto.Repor
 		WorkspaceID:      ws.ID,
 		WorkspaceName:    ws.Name,
 		AgentName:        a.AgentName,
-		Type:             connectionType,
+		Type:             logType,
 		Code:             code,
 		IP:               logIP,
 		ConnectionID: uuid.NullUUID{

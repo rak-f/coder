@@ -195,6 +195,24 @@ func TestProtoFromLifecycle(t *testing.T) {
 	}
 }
 
+func TestProtoFromAppFamily(t *testing.T) {
+	t.Parallel()
+	for typ, family := range map[proto.Connection_Type]codersdk.AppFamilyName{
+		proto.Connection_SSH:              codersdk.AppFamilySSH,
+		proto.Connection_VSCODE:           codersdk.AppFamilyVSCode,
+		proto.Connection_JETBRAINS:        codersdk.AppFamilyJetBrains,
+		proto.Connection_RECONNECTING_PTY: codersdk.AppFamilyReconnectingPTY,
+	} {
+		got, err := agentsdk.AppFamilyFromProto(typ)
+		require.NoError(t, err)
+		require.Equal(t, family, got)
+		require.Equal(t, typ, agentsdk.ProtoFromAppFamily(family))
+	}
+	require.Equal(t, proto.Connection_TYPE_UNSPECIFIED, agentsdk.ProtoFromAppFamily(codersdk.AppFamilyUnknown))
+	_, err := agentsdk.AppFamilyFromProto(proto.Connection_TYPE_UNSPECIFIED)
+	require.Error(t, err)
+}
+
 func TestProtoFromMetadataResult(t *testing.T) {
 	t.Parallel()
 	now := dbtime.Now()
