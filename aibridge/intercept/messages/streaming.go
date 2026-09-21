@@ -41,7 +41,7 @@ func NewStreamingInterceptor(
 	reqPayload RequestPayload,
 	cfg intercept.Config,
 	cred intercept.Credential,
-	auth AuthRuntime,
+	bedrock *BedrockRuntime,
 	clientHeaders http.Header,
 	tracer trace.Tracer,
 ) *StreamingInterception {
@@ -50,7 +50,7 @@ func NewStreamingInterceptor(
 		reqPayload:       reqPayload,
 		cfg:              cfg,
 		cred:             cred,
-		auth:             auth,
+		bedrock:          bedrock,
 		clientHeaders:    clientHeaders,
 		tracer:           tracer,
 		isSmallFastModel: isSmallFastModel(reqPayload.model()),
