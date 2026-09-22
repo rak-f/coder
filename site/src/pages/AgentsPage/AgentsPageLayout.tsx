@@ -95,7 +95,7 @@ import { maybePlayChime } from "./utils/chime";
 import { clearPersistedRightPanelState } from "./utils/rightPanelTabStorage";
 import { clearPersistedSidebarTabId } from "./utils/sidebarTabStorage";
 
-export interface AgentsPageOutletContext {
+export type AgentsPageOutletContext = {
 	chatErrorReasons: Record<string, ChatDetailError>;
 	setChatErrorReason: (chatId: string, reason: ChatDetailError) => void;
 	clearChatErrorReason: (chatId: string) => void;
@@ -124,7 +124,7 @@ export interface AgentsPageOutletContext {
 	onToggleSidebarCollapsed: () => void;
 	onExpandSidebar: () => void;
 	onChatReady: () => void;
-}
+};
 
 const FILTER_MEMBERSHIP_EVENT_KINDS = new Set<TypesGen.ChatWatchEventKind>([
 	"diff_status_change",
