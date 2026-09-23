@@ -1865,7 +1865,18 @@ Emit structured logs for AI Gateway interception records. Use this for exporting
 | YAML        | <code>ai_gateway.send_actor_headers</code>        |
 | Default     | <code>false</code>                                |
 
-Once enabled, extra headers will be added to upstream requests to identify the user (actor) making requests to AI Gateway. This is only needed if you are using a proxy between AI Gateway and an upstream AI provider. This will send X-Ai-Bridge-Actor-Id (the ID of the user making the request) and X-Ai-Bridge-Actor-Metadata-Username (their username).
+Add the authenticated user's ID, username, and email to intercepted upstream requests. Header names can be changed with the actor header names setting. Email is personal information; enable only for trusted upstream providers.
+
+### --ai-gateway-actor-header-names
+
+|             |                                                   |
+|-------------|---------------------------------------------------|
+| Type        | <code>struct[map[string]string]</code>            |
+| Environment | <code>$CODER_AI_GATEWAY_ACTOR_HEADER_NAMES</code> |
+| YAML        | <code>ai_gateway.actor_header_names</code>        |
+| Default     | <code>{}</code>                                   |
+
+Map id, username, and email to upstream header names. Omitted entries use X-Ai-Bridge-Actor-Id, X-Ai-Bridge-Actor-Metadata-Username, and X-Ai-Bridge-Actor-Metadata-Email. Requires send actor headers to be enabled.
 
 ### --ai-gateway-dump-dir
 

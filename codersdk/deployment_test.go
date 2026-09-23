@@ -572,6 +572,68 @@ func must[T any](value T, err error) T {
 	return value
 }
 
+func TestAIGatewayActorHeaderNames(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"default", "flag", "env", "yaml"} {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			dv := &codersdk.DeploymentValues{}
+			opts := dv.Options()
+			if source != "yaml" {
+				require.NoError(t, opts.SetDefaults())
+			}
+			mapping := "{id: X-User-Id, username: X-Username, email: X-Email}"
+			switch source {
+			case "flag":
+				require.NoError(t, opts.FlagSet().Parse([]string{"--ai-gateway-actor-header-names", mapping}))
+			case "env":
+				require.NoError(t, opts.ParseEnv([]serpent.EnvVar{{Name: "CODER_AI_GATEWAY_ACTOR_HEADER_NAMES", Value: mapping}}))
+			case "yaml":
+				var node yaml.Node
+				require.NoError(t, yaml.Unmarshal([]byte("ai_gateway:\n  actor_header_names: "+mapping), &node))
+				require.NoError(t, node.Decode(&opts))
+				require.NoError(t, opts.SetDefaults())
+			}
+			if source == "default" {
+				require.Empty(t, dv.AI.BridgeConfig.ActorHeaderNames.Value)
+			} else {
+				require.Equal(t, map[string]string{"id": "X-User-Id", "username": "X-Username", "email": "X-Email"}, dv.AI.BridgeConfig.ActorHeaderNames.Value)
+			}
+			require.NoError(t, dv.Validate())
+		})
+	}
+	for _, tc := range []struct {
+		name    string
+		mapping map[string]string
+		wantErr string
+	}{
+		{name: "partial", mapping: map[string]string{"username": "X-User"}},
+		{name: "explicit default", mapping: map[string]string{"email": "x-ai-bridge-actor-metadata-email"}},
+		{name: "unknown", mapping: map[string]string{"name": "X-Name"}, wantErr: "unknown"},
+		{name: "empty", mapping: map[string]string{"id": ""}, wantErr: "invalid"},
+		{name: "invalid", mapping: map[string]string{"email": "Bad: Header"}, wantErr: "invalid"},
+		{name: "duplicate", mapping: map[string]string{"id": "X-User", "username": "x-user"}, wantErr: "duplicate"},
+		{name: "auth", mapping: map[string]string{"id": "authorization"}, wantErr: "reserved"},
+		{name: "transport", mapping: map[string]string{"id": "Content-Type"}, wantErr: "reserved"},
+		{name: "transport generated", mapping: map[string]string{"email": "User-Agent"}, wantErr: "reserved"},
+		{name: "internal", mapping: map[string]string{"id": "X-Coder-AI-Governance-Token"}, wantErr: "reserved"},
+		{name: "legacy metadata", mapping: map[string]string{"id": "X-AI-Bridge-Actor-Metadata-Other"}, wantErr: "reserved"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dv := &codersdk.DeploymentValues{}
+			opts := dv.Options()
+			require.NoError(t, opts.SetDefaults())
+			dv.AI.BridgeConfig.ActorHeaderNames.Value = tc.mapping
+			if tc.wantErr == "" {
+				require.NoError(t, dv.Validate())
+			} else {
+				require.ErrorContains(t, dv.Validate(), tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestAIGatewayCompatibilityAliases(t *testing.T) {
 	t.Parallel()
 

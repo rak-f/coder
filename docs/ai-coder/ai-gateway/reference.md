@@ -61,6 +61,33 @@ Coder build versions are not the compatibility criterion.
 
 For upgrade and rollback ordering, refer to [Version compatibility](./standalone.md#version-compatibility) in the standalone deployment guide.
 
+## Actor header forwarding
+
+Enable `--ai-gateway-send-actor-headers`, `CODER_AI_GATEWAY_SEND_ACTOR_HEADERS`, or `ai_gateway.send_actor_headers` to add actor identity to intercepted upstream requests.
+
+When enabled, AI Gateway emits these headers by default:
+
+| Actor key  | Default header                        | Value                                                   |
+|------------|---------------------------------------|---------------------------------------------------------|
+| `id`       | `X-AI-Bridge-Actor-ID`                | The authenticated Coder user ID.                        |
+| `username` | `X-AI-Bridge-Actor-Metadata-Username` | The username from the authenticated Coder account.      |
+| `email`    | `X-AI-Bridge-Actor-Metadata-Email`    | The email address from the authenticated Coder account. |
+
+Configure `--ai-gateway-actor-header-names`, `CODER_AI_GATEWAY_ACTOR_HEADER_NAMES`, or `ai_gateway.actor_header_names` as a map from `id`, `username`, and `email` to header names.
+Each configured name replaces that key's default header rather than adding an alias.
+Omitted keys keep their defaults.
+An empty, duplicate, or protected header name is rejected.
+
+AI Gateway uses values from the authenticated Coder account, not client-supplied headers.
+Remapped actor headers remain protected from ordinary client header forwarding.
+If the authenticated account has no email, AI Gateway omits the email header.
+The user ID is stable for the account, while an email address can change.
+Actor headers include email addresses.
+Enable them only for upstream providers you trust with this personal information.
+
+Ordinary client header forwarding is unchanged.
+Gateway does not inject actor headers on passthrough routes.
+
 ## Supported APIs
 
 API support is divided into two categories:

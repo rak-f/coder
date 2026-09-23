@@ -183,9 +183,13 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// [NOTE]
 	// The metadata provided here must NOT be sensitive as it could be included
 	// in requests to upstream services.
-	r = r.WithContext(aibridge.AsActor(ctx, resp.GetOwnerId(), recorder.Metadata{
+	metadata := recorder.Metadata{
 		"Username": resp.GetUsername(),
-	}))
+	}
+	if email := resp.GetEmail(); email != "" {
+		metadata["Email"] = email
+	}
+	r = r.WithContext(aibridge.AsActor(ctx, resp.GetOwnerId(), metadata))
 
 	handler, err := s.GetRequestHandler(ctx, Request{
 		SessionKey:  key,

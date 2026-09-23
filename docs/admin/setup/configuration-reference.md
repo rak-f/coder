@@ -241,6 +241,15 @@ Base directory for dumping AI Gateway request/response pairs to disk for debuggi
 - CLI flag: [`--ai-gateway-dump-dir`](../../reference/cli/server.md#--ai-gateway-dump-dir)
 - YAML key: `ai_gateway.api_dump_dir`
 
+### Actor header names
+
+Map id, username, and email to upstream header names. Omitted entries use X-Ai-Bridge-Actor-Id, X-Ai-Bridge-Actor-Metadata-Username, and X-Ai-Bridge-Actor-Metadata-Email. Requires send actor headers to be enabled.
+
+- Environment variable: `CODER_AI_GATEWAY_ACTOR_HEADER_NAMES`
+- CLI flag: [`--ai-gateway-actor-header-names`](../../reference/cli/server.md#--ai-gateway-actor-header-names)
+- YAML key: `ai_gateway.actor_header_names`
+- Default value: `{}`
+
 ### Allow BYOK
 
 Allow users to provide their own LLM API keys or subscriptions. When disabled, only centralized key authentication is permitted.
@@ -297,7 +306,7 @@ Maximum number of AI Gateway requests per second per replica. Set to 0 to disabl
 
 ### Send actor headers
 
-Once enabled, extra headers will be added to upstream requests to identify the user (actor) making requests to AI Gateway. This is only needed if you are using a proxy between AI Gateway and an upstream AI provider. This will send X-Ai-Bridge-Actor-Id (the ID of the user making the request) and X-Ai-Bridge-Actor-Metadata-Username (their username).
+Add the authenticated user's ID, username, and email to intercepted upstream requests. Header names can be changed with the actor header names setting. Email is personal information; enable only for trusted upstream providers.
 
 - Environment variable: `CODER_AI_GATEWAY_SEND_ACTOR_HEADERS`
 - CLI flag: [`--ai-gateway-send-actor-headers`](../../reference/cli/server.md#--ai-gateway-send-actor-headers)

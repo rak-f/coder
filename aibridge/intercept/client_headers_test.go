@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/coder/coder/v2/aibridge/context"
 	"github.com/coder/coder/v2/aibridge/intercept"
+	"github.com/coder/coder/v2/aibridge/recorder"
 )
 
 func TestPrepareClientHeaders(t *testing.T) {
@@ -153,7 +155,7 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 			"User-Agent":    {"claude-code/1.0"},
 		}
 
-		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization")
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{}, nil)
 
 		assert.Equal(t, "Bearer sk-provider-key", result.Get("Authorization"))
 		assert.Equal(t, "claude-code/1.0", result.Get("User-Agent"))
@@ -171,7 +173,7 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 			"Anthropic-Beta": {"prompt-caching-2024-07-31"},
 		}
 
-		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "X-Api-Key")
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "X-Api-Key", intercept.Config{}, nil)
 
 		assert.Equal(t, "sk-ant-provider-key", result.Get("X-Api-Key"))
 		assert.Empty(t, result.Get("Authorization"))
@@ -191,7 +193,7 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 			"User-Agent":    {"claude-code/1.0"},
 		}
 
-		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization")
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{}, nil)
 
 		assert.Equal(t, "Bearer sk-key", result.Get("Authorization"))
 		assert.Equal(t, "user-123", result.Get("X-Ai-Bridge-Actor-Id"))
@@ -214,7 +216,7 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 			"User-Agent":        {"claude-code/1.0"},
 		}
 
-		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization")
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{}, nil)
 
 		assert.Empty(t, result.Get("Connection"))
 		assert.Empty(t, result.Get("Host"))
@@ -232,7 +234,7 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 			"User-Agent": {"claude-code/1.0"},
 		}
 
-		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization")
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{}, nil)
 
 		assert.Empty(t, result.Get("Authorization"))
 		assert.Equal(t, "claude-code/1.0", result.Get("User-Agent"))
@@ -251,9 +253,60 @@ func TestBuildUpstreamHeaders(t *testing.T) {
 		sdkCopy := sdkHeader.Clone()
 		clientCopy := clientHeaders.Clone()
 
-		_ = intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization")
+		_ = intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{}, nil)
 
 		require.Equal(t, sdkCopy, sdkHeader)
 		require.Equal(t, clientCopy, clientHeaders)
+	})
+
+	t.Run("mapped actor destinations replace defaults and nil input is safe", func(t *testing.T) {
+		t.Parallel()
+
+		sdkHeader := http.Header{
+			"X-Downstream-User-Id":  {"sdk-id"},
+			"X-Downstream-Username": {"sdk-name"},
+			"X-Downstream-Email":    {"sdk-email"},
+		}
+		clientHeaders := http.Header{
+			"X-Ai-Bridge-Actor-Id":                {"spoofed-id"},
+			"X-Ai-Bridge-Actor-Metadata-Username": {"spoofed-name"},
+			"X-Downstream-User-Id":                {"spoofed-mapped-id"},
+		}
+
+		result := intercept.BuildUpstreamHeaders(sdkHeader, clientHeaders, "Authorization", intercept.Config{SendActorHeaders: true, ActorHeaderNames: map[string]string{
+			"id":       "X-Downstream-User-Id",
+			"username": "X-Downstream-Username",
+			"email":    "X-Downstream-Email",
+		}}, &context.Actor{ID: "user-123", Metadata: recorder.Metadata{"Username": "alice", "Email": "alice@example.com"}})
+
+		require.Equal(t, "user-123", result.Get("X-Downstream-User-Id"))
+		require.Equal(t, "alice", result.Get("X-Downstream-Username"))
+		require.Equal(t, "alice@example.com", result.Get("X-Downstream-Email"))
+		require.Empty(t, result.Get("X-AI-Bridge-Actor-ID"))
+		require.Empty(t, result.Get("X-AI-Bridge-Actor-Metadata-Username"))
+
+		result = intercept.BuildUpstreamHeaders(sdkHeader, nil, "Authorization", intercept.Config{SendActorHeaders: true, ActorHeaderNames: map[string]string{
+			"id":       "X-Downstream-User-Id",
+			"username": "X-Downstream-Username",
+			"email":    "X-Downstream-Email",
+		}}, &context.Actor{ID: "user-123"})
+		require.Equal(t, "user-123", result.Get("X-Downstream-User-Id"))
+	})
+
+	t.Run("missing actor email does not reuse SDK header", func(t *testing.T) {
+		t.Parallel()
+
+		result := intercept.BuildUpstreamHeaders(http.Header{"X-Email": {"sdk-email"}}, http.Header{"X-Email": {"client-email"}}, "Authorization", intercept.Config{
+			SendActorHeaders: true,
+			ActorHeaderNames: map[string]string{"email": "X-Email"},
+		}, &context.Actor{ID: "user-123"})
+		require.Empty(t, result.Get("X-Email"))
+	})
+
+	t.Run("actor forwarding off preserves SDK actor headers", func(t *testing.T) {
+		t.Parallel()
+
+		result := intercept.BuildUpstreamHeaders(http.Header{intercept.ActorIDHeader(): {"sdk-actor"}}, nil, "Authorization", intercept.Config{}, nil)
+		require.Equal(t, "sdk-actor", result.Get(intercept.ActorIDHeader()))
 	})
 }

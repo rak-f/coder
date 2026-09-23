@@ -239,6 +239,7 @@ func buildProvider(ctx context.Context, spec aiProviderSpec, cfg codersdk.AIBrid
 	cbCfg := circuitBreakerConfig(cfg)
 	sendActorHeaders := cfg.SendActorHeaders.Value()
 	dumpDir := cfg.APIDumpDir.Value()
+	actorHeaderNames := cfg.ActorHeaderNames.Value
 
 	// aibridge currently has native support for OpenAI and Anthropic
 	// only. The other ai_provider_type values (azure, google,
@@ -271,6 +272,7 @@ func buildProvider(ctx context.Context, spec aiProviderSpec, cfg codersdk.AIBrid
 			APIDumpDir:       dumpDir,
 			CircuitBreaker:   cbCfg,
 			SendActorHeaders: sendActorHeaders,
+			ActorHeaderNames: actorHeaderNames,
 		}), nil
 
 	case database.AIProviderTypeAnthropic:
@@ -293,6 +295,7 @@ func buildProvider(ctx context.Context, spec aiProviderSpec, cfg codersdk.AIBrid
 			APIDumpDir:       dumpDir,
 			CircuitBreaker:   cbCfg,
 			SendActorHeaders: sendActorHeaders,
+			ActorHeaderNames: actorHeaderNames,
 		}, nil)
 
 	case database.AIProviderTypeBedrock:
@@ -310,16 +313,19 @@ func buildProvider(ctx context.Context, spec aiProviderSpec, cfg codersdk.AIBrid
 			APIDumpDir:       dumpDir,
 			CircuitBreaker:   cbCfg,
 			SendActorHeaders: sendActorHeaders,
+			ActorHeaderNames: actorHeaderNames,
 		}, *bedrock)
 
 	case database.AIProviderTypeCopilot:
 		// Copilot is always BYOK; the per-user token is supplied on each
 		// request via the Authorization header, so no keypool is built.
 		return aibridge.NewCopilotProvider(aibridge.CopilotConfig{
-			Name:           spec.Name,
-			BaseURL:        spec.BaseURL,
-			APIDumpDir:     dumpDir,
-			CircuitBreaker: cbCfg,
+			Name:             spec.Name,
+			BaseURL:          spec.BaseURL,
+			APIDumpDir:       dumpDir,
+			CircuitBreaker:   cbCfg,
+			SendActorHeaders: sendActorHeaders,
+			ActorHeaderNames: actorHeaderNames,
 		}), nil
 
 	default:

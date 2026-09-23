@@ -48,6 +48,7 @@ export interface AIBridgeConfig {
 	readonly rate_limit: number;
 	readonly structured_logging: boolean;
 	readonly send_actor_headers: boolean;
+	readonly actor_header_names: SerpentStruct<Record<string, string>>;
 	readonly allow_byok: boolean;
 	/**
 	 * Budget settings for AI Governance cost controls.

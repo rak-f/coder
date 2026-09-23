@@ -17685,6 +17685,12 @@ const docTemplate = `{
         "codersdk.AIBridgeConfig": {
             "type": "object",
             "properties": {
+                "actor_header_names": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "allow_byok": {
                     "type": "boolean"
                 },
