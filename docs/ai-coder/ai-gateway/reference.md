@@ -80,7 +80,8 @@ An empty, duplicate, or protected header name is rejected.
 
 AI Gateway uses values from the authenticated Coder account, not client-supplied headers.
 Remapped actor headers remain protected from ordinary client header forwarding.
-If the authenticated account has no email, AI Gateway omits the email header.
+Regular Coder users must have an email address.
+Service accounts have no email address, so AI Gateway omits the email header for them.
 The user ID is stable for the account, while an email address can change.
 Actor headers include email addresses.
 Enable them only for upstream providers you trust with this personal information.
