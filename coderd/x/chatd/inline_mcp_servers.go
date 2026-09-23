@@ -17,10 +17,12 @@ type inlineMCPServer struct {
 	AllowInPlanMode bool
 }
 
-// inlineMCPServersEnabled reports whether this deployment loads and
-// connects inline MCP servers at turn time. Both the experiment
-// and the caller-supplied tools kill switch must allow it.
-func (server *Server) inlineMCPServersEnabled() bool {
+// callerSuppliedMCPServersEnabled reports whether this deployment loads
+// and connects inline MCP servers that an API caller supplied. Both the
+// experiment and the caller-supplied tools kill switch must allow it.
+// Internal servers come from coderd code, so this gate does not apply
+// to them.
+func (server *Server) callerSuppliedMCPServersEnabled() bool {
 	return !server.disableCallerSuppliedTools &&
 		server.experiments.Enabled(codersdk.ExperimentChatInlineMCPServers)
 }
@@ -53,7 +55,11 @@ func (server *Server) loadInlineMCPServers(ctx context.Context, chat database.Ch
 
 	servers := make([]inlineMCPServer, 0, len(rows))
 	var failures []mcpclient.ConnectSummary
+	callerSuppliedEnabled := server.callerSuppliedMCPServersEnabled()
 	for _, row := range rows {
+		if !callerSuppliedEnabled && !mcpclient.IsInternalURL(row.Url) {
+			continue
+		}
 		if chat.ParentChatID.Valid && !row.AllowInSubagents {
 			continue
 		}
