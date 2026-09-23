@@ -1594,9 +1594,9 @@ None
 
 #### Enumerated Values
 
-| Value(s)                                                            |
-|---------------------------------------------------------------------|
-| `jetbrains`, `reconnecting_pty`, `sftp`, `ssh`, `unknown`, `vscode` |
+| Value(s)                                                                             |
+|--------------------------------------------------------------------------------------|
+| `jetbrains`, `reconnecting_pty`, `sftp`, `ssh`, `unknown`, `vscode`, `workspace_app` |
 
 ## codersdk.AppHostResponse
 
@@ -14093,7 +14093,8 @@ Git clone makes use of this by parsing the URL from: 'Username for "https://gith
 
 ```json
 {
-  "display_name": "Visual Studio Code",
+  "display_name": "VS Code",
+  "family": "vscode",
   "icon": "string",
   "seconds": 80500,
   "slug": "vscode",
@@ -14110,6 +14111,7 @@ Git clone makes use of this by parsing the URL from: 'Username for "https://gith
 | Name           | Type                                                   | Required | Restrictions | Description |
 |----------------|--------------------------------------------------------|----------|--------------|-------------|
 | `display_name` | string                                                 | false    |              |             |
+| `family`       | [codersdk.AppFamilyName](#codersdkappfamilyname)       | false    |              |             |
 | `icon`         | string                                                 | false    |              |             |
 | `seconds`      | integer                                                | false    |              |             |
 | `slug`         | string                                                 | false    |              |             |
@@ -14770,7 +14772,8 @@ Restarts will only happen on weekdays in this list on weeks which line up with W
   "active_users": 22,
   "apps_usage": [
     {
-      "display_name": "Visual Studio Code",
+      "display_name": "VS Code",
+      "family": "vscode",
       "icon": "string",
       "seconds": 80500,
       "slug": "vscode",
@@ -14844,7 +14847,8 @@ Restarts will only happen on weekdays in this list on weeks which line up with W
     "active_users": 22,
     "apps_usage": [
       {
-        "display_name": "Visual Studio Code",
+        "display_name": "VS Code",
+        "family": "vscode",
         "icon": "string",
         "seconds": 80500,
         "slug": "vscode",
