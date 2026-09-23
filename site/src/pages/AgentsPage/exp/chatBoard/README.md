@@ -147,7 +147,9 @@ snapshot the previous maps of every touched chat so they can be undone.
 - `runPlan.ts` is the executor: applies one `Plan` through injected write,
   rename and storage functions (error toast, undo). `boardChats.ts` holds
   the board's all-chats query and the label mutation that patches the
-  caches before the request.
+  caches before the request. While a board write is queued, a refetch
+  keeps the board's labels; the refetch after the last write brings the
+  server's.
 - `boardDrag.ts` maps a dnd-kit collision to a drop target and a drop to
   a command; `windows.ts` is pure window geometry and list edits.
 - `ChatBoardPage.tsx` owns state and mutations; `BoardHeader.tsx`,
@@ -183,7 +185,8 @@ Coder MCP gaps seen while a board assistant worked, as of this experiment:
 - The assistant is not told when its snapshot is stale on return.
 - Concurrent edits from two browsers are last write wins.
 - If a transfer's receiver is rejected, an edit to a source chat made before
-  the board refetches saves the source without the transferred data.
+  the board's writes finish and it refetches saves the source without the
+  transferred data.
 - Notes have no id of their own: the list keys them by timestamp, so notes
   stored without one fall back to display order.
 - Deleting an effort; drop it from every card instead.
