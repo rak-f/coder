@@ -1925,7 +1925,7 @@ FROM
 WHERE
     chat_id = @chat_id::uuid
 ORDER BY
-    reported_at DESC,
+    updated_at DESC,
     git_remote_origin,
     git_branch;
 
@@ -1937,7 +1937,7 @@ FROM
 WHERE
     chat_id = ANY(@chat_ids::uuid[])
 ORDER BY
-    reported_at DESC,
+    updated_at DESC,
     git_remote_origin,
     git_branch;
 
@@ -1973,7 +1973,6 @@ SET
         ELSE chat_diff_statuses.url
     END,
     stale_at = EXCLUDED.stale_at,
-    reported_at = NOW(),
     updated_at = NOW()
 RETURNING
     *;
@@ -2412,7 +2411,7 @@ SELECT DISTINCT ON (c.id)
 FROM chats c
 LEFT JOIN chat_diff_statuses cds ON cds.chat_id = c.id
 WHERE c.updated_at > @updated_after
-ORDER BY c.id, cds.reported_at DESC NULLS LAST, cds.git_remote_origin, cds.git_branch;
+ORDER BY c.id, cds.updated_at DESC NULLS LAST, cds.git_remote_origin, cds.git_branch;
 
 -- name: GetChatMessageSummariesPerChat :many
 -- Aggregates message-level metrics per chat for messages created
