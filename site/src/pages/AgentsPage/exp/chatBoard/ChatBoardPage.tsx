@@ -43,7 +43,12 @@ import { BoardColumns } from "./BoardColumns";
 import { BoardHeader } from "./BoardHeader";
 import { BoardWindows } from "./BoardWindows";
 import { effortsOf, type Plan, renameEffort } from "./boardApi";
-import { boardChats, boardWriteScope, updateChatLabels } from "./boardChats";
+import {
+	boardChats,
+	boardWriteScope,
+	isBoardWriting,
+	updateChatLabels,
+} from "./boardChats";
 import {
 	boardCollision,
 	type DropTarget,
@@ -216,15 +221,33 @@ const ChatBoardPage: FC = () => {
 	const efforts = effortsOf(allCards);
 	// A stored filter whose last card lost the effort falls back to All; once
 	// the list is loaded that is known for sure and the filter is cleared.
+	// Render-time saves like this one and the column order below are skipped
+	// while writing: a plan saves storage before its label patch lands, so a
+	// renamed effort or column would read as missing.
 	const effortFilter = efforts.some((e) => e.name === storage.effortFilter)
 		? storage.effortFilter
 		: null;
 	if (
 		storage.effortFilter !== null &&
 		effortFilter === null &&
-		chatsQuery.data !== undefined
+		chatsQuery.data !== undefined &&
+		!isBoardWriting(queryClient)
 	) {
 		updateStorage({ effortFilter: null });
+	}
+	// A column first seen in the labels is saved at the end of the order.
+	// Unsaved columns follow their newest card, so a move would reorder them.
+	const unsavedColumns = columns
+		.map((column) => column.name)
+		.filter((name) => !storage.columnOrder.includes(name));
+	if (
+		chatsQuery.data !== undefined &&
+		unsavedColumns.length > 0 &&
+		!isBoardWriting(queryClient)
+	) {
+		updateStorage({
+			columnOrder: [...storage.columnOrder, ...unsavedColumns],
+		});
 	}
 	// An active search must not fall back to unfiltered cards when results
 	// are unavailable; the body below shows the loading or error state then.
