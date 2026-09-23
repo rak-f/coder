@@ -303,7 +303,7 @@ export const DeploymentBannerView: FC<DeploymentBannerViewProps> = ({
  */
 const SESSION_FAMILIES = {
 	vscode: {
-		name: "VS Code",
+		name: "Visual Studio Code",
 		icon: <ExternalImage src="/icon/code.svg" className="size-icon-xs" />,
 	},
 	jetbrains: {

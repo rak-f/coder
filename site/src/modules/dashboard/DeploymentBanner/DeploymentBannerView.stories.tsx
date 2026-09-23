@@ -89,7 +89,7 @@ export const VSCodeForks: Story = {
 	play: async ({ canvasElement }) => {
 		await userEvent.hover(
 			within(canvasElement).getByRole("button", {
-				name: "VS Code: 173 active connections",
+				name: "Visual Studio Code: 173 active connections",
 			}),
 		);
 		// Let the tooltip open before the screenshot.
