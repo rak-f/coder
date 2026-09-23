@@ -86,6 +86,10 @@ func FilterableConnectionTypes() []ConnectionType {
 
 // DisplayName returns the human-readable name of t.
 func (t ConnectionType) DisplayName() string {
+	// The family spans every fork, so it takes the long name its app lacks.
+	if t == ConnectionTypeVSCode {
+		return TemplateBuiltinAppDisplayNameVSCode
+	}
 	return ConnectionLogTypeDisplayName(string(t))
 }
 

@@ -49,7 +49,7 @@ func TestConnectionLogTypeDisplayName(t *testing.T) {
 		logType string
 		want    string
 	}{
-		{"Family", "vscode", "VS Code"},
+		{"AppNamedLikeItsFamily", "vscode", "VS Code"},
 		{"WebType", "workspace_app", "Workspace App"},
 		{"App", "cursor", "Cursor"},
 		{"AppKeepsItsPunctuation", "code_server", "code-server"},
@@ -61,6 +61,14 @@ func TestConnectionLogTypeDisplayName(t *testing.T) {
 			require.Equal(t, tc.want, codersdk.ConnectionLogTypeDisplayName(tc.logType))
 		})
 	}
+}
+
+func TestConnectionTypeDisplayName(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "Visual Studio Code", codersdk.ConnectionTypeVSCode.DisplayName())
+	require.Equal(t, "JetBrains", codersdk.ConnectionTypeJetBrains.DisplayName())
+	require.Equal(t, "Workspace App", codersdk.ConnectionTypeWorkspaceApp.DisplayName())
 }
 
 func TestConnectionLogTypeFamily(t *testing.T) {
