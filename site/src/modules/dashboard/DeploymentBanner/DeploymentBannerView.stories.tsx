@@ -19,7 +19,7 @@ const app = (
 	icon?: string,
 ): SessionCountApp => ({ count, display_name, family, icon });
 
-// The deprecated family totals are zeroed; the banner reads apps instead.
+/** Zeroes the deprecated family totals, since the banner reads apps. */
 const withSessionCount = (
 	apps: SessionCountDeploymentStats["apps"],
 ): DeploymentStats => ({
@@ -33,11 +33,26 @@ const withSessionCount = (
 	},
 });
 
-// Seven apps: four visible, three behind "+3 more", two with no icon.
-const manyApps = withSessionCount({
+const otherApps = withSessionCount({
 	...MockDeploymentStats.session_count.apps,
-	zed: app(7, "Zed", "ssh", "/icon/zed.svg"),
-	vscodium: app(4, "VSCodium", "vscode"),
+	unknown_app: app(3, "unknown_app"),
+	long_name: app(
+		1,
+		"A workspace application with an intentionally long display name",
+	),
+	offsite_icon: app(
+		1,
+		"Offsite Icon",
+		"unknown",
+		"https://example.com/icon.svg",
+	),
+	sftp: app(2, "SFTP", "sftp", "/icon/terminal.svg"),
+	...Object.fromEntries(
+		Array.from({ length: 20 }, (_, i) => [
+			`custom_${i}`,
+			app(1, `custom_${i}`),
+		]),
+	),
 });
 
 const meta: Meta<typeof DeploymentBannerView> = {
@@ -53,71 +68,44 @@ type Story = StoryObj<typeof DeploymentBannerView>;
 
 export const Example: Story = {};
 
-// Every edge case in one screenshot.
-export const SessionCountVariants: Story = {
-	render: () => (
-		<div className="grid gap-2">
-			<DeploymentBannerView stats={withSessionCount({})} />
-			<DeploymentBannerView
-				stats={withSessionCount({
-					unknown_app: app(3, "unknown_app"),
-				})}
-			/>
-			<DeploymentBannerView
-				stats={withSessionCount({
-					long_name: app(
-						1,
-						"A workspace application with an intentionally long display name",
-					),
-				})}
-			/>
-			<DeploymentBannerView
-				stats={withSessionCount({
-					vscodium: app(4, "VSCodium", "vscode"),
-					trae: app(2, "Trae", "vscode"),
-				})}
-			/>
-			<DeploymentBannerView
-				stats={withSessionCount({
-					offsite_icon: app(
-						1,
-						"Offsite Icon",
-						"unknown",
-						"https://example.com/icon.svg",
-					),
-				})}
-			/>
-			<DeploymentBannerView stats={manyApps} />
-		</div>
-	),
+export const NoActiveConnections: Story = {
+	args: { stats: withSessionCount({}) },
 };
 
-export const OverflowOpen: Story = {
-	args: { stats: manyApps },
+/** VS Code and its forks, as a real deployment reports them. */
+export const VSCodeForks: Story = {
+	args: {
+		stats: withSessionCount({
+			...MockDeploymentStats.session_count.apps,
+			vscode_insiders: app(
+				12,
+				"VS Code Insiders",
+				"vscode",
+				"/icon/code-insiders.svg",
+			),
+			antigravity: app(9, "Antigravity", "vscode", "/icon/antigravity.svg"),
+		}),
+	},
 	play: async ({ canvasElement }) => {
-		await userEvent.click(
-			within(canvasElement).getByRole("button", { name: "+3 more" }),
+		await userEvent.hover(
+			within(canvasElement).getByRole("button", {
+				name: "VS Code: 173 active connections",
+			}),
 		);
+		// Let the tooltip open before the screenshot.
+		await waitFor(() => screen.getByRole("tooltip"));
 	},
 };
 
-export const OverflowNarrow: Story = {
-	...OverflowOpen,
-	decorators: [
-		(Story) => (
-			<div className="w-[390px]">
-				<Story />
-			</div>
-		),
-	],
-};
-
-export const FamilyTotals: Story = {
+/** Long names, an offsite icon, a family without a slot, and a scrolling list. */
+export const OtherApps: Story = {
+	args: { stats: otherApps },
 	play: async ({ canvasElement }) => {
 		await userEvent.hover(
-			within(canvasElement).getByRole("button", { name: "Active Connections" }),
+			within(canvasElement).getByRole("button", {
+				name: "Other: 27 active connections",
+			}),
 		);
-		// Let the tooltip open before the screenshot.
 		await waitFor(() => screen.getByRole("tooltip"));
 	},
 };

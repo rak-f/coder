@@ -1560,6 +1560,12 @@ export interface AppHostResponse {
 	readonly host: string;
 }
 
+// From codersdk/appname.go
+/**
+ * AppNameOverflow sums the app names past the per-report cap.
+ */
+export const AppNameOverflow = "overflow";
+
 // From codersdk/deployment.go
 export interface AppearanceConfig {
 	readonly application_name: string;

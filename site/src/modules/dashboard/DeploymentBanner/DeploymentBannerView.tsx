@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import {
 	AppWindowIcon,
+	BlocksIcon,
 	CircleAlertIcon,
 	CloudDownloadIcon,
 	CloudUploadIcon,
@@ -8,6 +9,7 @@ import {
 	GitCompareArrowsIcon,
 	RocketIcon,
 	RotateCwIcon,
+	SquareTerminalIcon,
 	WrenchIcon,
 } from "lucide-react";
 import prettyBytes from "pretty-bytes";
@@ -16,27 +18,25 @@ import {
 	Fragment,
 	memo,
 	type PropsWithChildren,
+	type ReactNode,
 	useEffect,
 	useMemo,
 	useState,
 } from "react";
 import { Link as RouterLink } from "react-router";
-import type {
-	AppFamilyName,
-	DeploymentStats,
-	HealthcheckReport,
-	SessionCountDeploymentStats,
-	WorkspaceStatus,
+import {
+	type AppFamilyName,
+	AppFamilyNames,
+	type DeploymentStats,
+	type HealthcheckReport,
+	type SessionCountApp,
+	type SessionCountDeploymentStats,
+	type WorkspaceStatus,
 } from "#/api/typesGenerated";
 import { Button } from "#/components/Button/Button";
 import { ExternalImage } from "#/components/ExternalImage/ExternalImage";
 import { HelpPopoverTitle } from "#/components/HelpPopover/HelpPopover";
 import { Link } from "#/components/Link/Link";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "#/components/Popover/Popover";
 import {
 	TOOLTIP_DELAY_DURATION,
 	Tooltip,
@@ -297,142 +297,115 @@ export const DeploymentBannerView: FC<DeploymentBannerViewProps> = ({
 	);
 };
 
-const MAX_VISIBLE_APPS = 4;
+/**
+ * Banner slots in bar order. A family added in Go fails typecheck until it
+ * gets a slot here, or null to total under Other.
+ */
+const SESSION_FAMILIES = {
+	vscode: {
+		name: "VS Code",
+		icon: <ExternalImage src="/icon/code.svg" className="size-icon-xs" />,
+	},
+	jetbrains: {
+		name: "JetBrains",
+		icon: <ExternalImage src="/icon/jetbrains.svg" className="size-icon-xs" />,
+	},
+	ssh: { name: "SSH", icon: <SquareTerminalIcon className="size-icon-xs" /> },
+	reconnecting_pty: {
+		name: "Web Terminal",
+		icon: <AppWindowIcon className="size-icon-xs" />,
+	},
+	unknown: { name: "Other", icon: <BlocksIcon className="size-icon-xs" /> },
+	sftp: null,
+} satisfies Record<AppFamilyName, { name: string; icon: ReactNode } | null>;
 
-const SESSION_FAMILIES: readonly {
-	key: AppFamilyName;
-	name: string;
-	icon?: string;
-}[] = [
-	{ key: "vscode", name: "VS Code", icon: "/icon/code.svg" },
-	{ key: "jetbrains", name: "JetBrains", icon: "/icon/jetbrains.svg" },
-	{ key: "ssh", name: "SSH", icon: "/icon/terminal.svg" },
-	{ key: "reconnecting_pty", name: "Web Terminal" },
-];
+const FAMILY_SLOTS = Object.entries(SESSION_FAMILIES).flatMap(
+	([name, slot]) => {
+		const key = AppFamilyNames.find((family) => family === name);
+		return key && slot ? [{ key, ...slot }] : [];
+	},
+);
 
-const APP_COLLATOR = new Intl.Collator("en-US");
+const APP_COLLATOR = new Intl.Collator("en-US", { numeric: true });
 
-// Busiest first. The id tie-break keeps apps that share a display name, such
-// as codium and vscodium, stably ordered across refreshes.
-export const sortSessionApps = (
+/** Groups active apps by banner slot, sorted by name so rows stay put. */
+export const groupSessionApps = (
 	apps: SessionCountDeploymentStats["apps"] = {},
-) =>
-	Object.entries(apps)
+) => {
+	const groups = new Map<AppFamilyName, (SessionCountApp & { id: string })[]>();
+	const sorted = Object.entries(apps)
 		.filter(([, app]) => app.count > 0)
 		.map(([id, app]) => ({ ...app, id }))
 		.sort(
 			(first, second) =>
-				second.count - first.count ||
 				APP_COLLATOR.compare(first.display_name, second.display_name) ||
 				APP_COLLATOR.compare(first.id, second.id),
 		);
-
-export const sumSessionFamilies = (
-	apps: SessionCountDeploymentStats["apps"] = {},
-) => {
-	const totals = new Map<AppFamilyName, number>();
-	for (const { family, count } of Object.values(apps)) {
-		totals.set(family, (totals.get(family) ?? 0) + count);
+	for (const app of sorted) {
+		const family = SESSION_FAMILIES[app.family] ? app.family : "unknown";
+		groups.set(family, [...(groups.get(family) ?? []), app]);
 	}
-	return totals;
+	return groups;
 };
 
-// The banner rerenders every second for its refresh countdown; these rows
-// only change once per poll.
+/**
+ * Memoized because the banner rerenders every second for its countdown, while
+ * these rows change once per poll.
+ */
 const ActiveConnections = memo(
 	({ sessionCount }: { sessionCount?: SessionCountDeploymentStats }) => {
-		const apps = sortSessionApps(sessionCount?.apps);
-		const familyTotals = sumSessionFamilies(sessionCount?.apps);
-		const visible = apps.slice(0, MAX_VISIBLE_APPS);
-		const overflow = apps.slice(MAX_VISIBLE_APPS);
+		const groups = groupSessionApps(sessionCount?.apps);
 
 		return (
 			<TooltipProvider delayDuration={TOOLTIP_DELAY_DURATION}>
 				<div className="flex items-center">
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant="subtle"
-								size="xs"
-								className="mr-4 p-0 font-mono text-xs text-content-primary"
-							>
-								Active Connections
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent
-							side="top"
-							hideWhenDetached
-							className="w-72 p-4 font-sans font-normal shadow-md"
-						>
-							<HelpPopoverTitle>Connections by family</HelpPopoverTitle>
-							<dl className="m-0 grid gap-3 py-2 text-sm">
-								{SESSION_FAMILIES.map(({ key, name, icon }) => (
-									<div
-										key={key}
-										className="flex items-center justify-between gap-4"
-									>
-										<dt className="flex items-center gap-3">
-											<AppLabel icon={icon} name={name} showName />
-										</dt>
-										<dd className="m-0 font-mono font-medium tabular-nums text-content-primary">
-											{sessionCount ? (familyTotals.get(key) ?? 0) : "-"}
-										</dd>
-									</div>
-								))}
-							</dl>
-							<p className="mb-0 mt-3 border-0 border-t border-solid border-border pt-3 text-xs leading-relaxed text-content-secondary">
-								Includes all apps in each family. Unrecognized apps are not
-								included.
-							</p>
-						</TooltipContent>
-					</Tooltip>
+					<div className="mr-4 text-content-primary">Active Connections</div>
 					<div className="flex gap-2 text-content-secondary">
-						{visible.length === 0 && (
-							<div>{sessionCount ? "No active connections" : "-"}</div>
-						)}
-						{visible.map(({ id, count, display_name, icon }, index) => (
-							<Fragment key={id}>
-								{index > 0 && <ValueSeparator />}
-								<ActiveConnection
-									count={count}
-									name={display_name}
-									icon={icon}
-								/>
-							</Fragment>
-						))}
-						{overflow.length > 0 && (
-							<Popover>
-								<PopoverTrigger asChild>
-									<Button
-										variant="subtle"
-										size="xs"
-										className="p-0 font-mono text-xs"
-									>
-										+{overflow.length} more
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent
-									side="top"
-									aria-label="More active connections"
-									hideWhenDetached
-									className="p-3 text-xs"
-								>
-									<ul className="m-0 grid list-none gap-3 p-0">
-										{overflow.map(({ id, display_name, count, icon }) => (
-											<li key={id} className="flex items-center gap-2">
-												<AppLabel
-													icon={icon}
-													name={display_name}
-													showName
-													nameClassName="min-w-0 flex-1 break-words"
-												/>
-												<span>{count}</span>
-											</li>
-										))}
-									</ul>
-								</PopoverContent>
-							</Popover>
-						)}
+						{FAMILY_SLOTS.map(({ key, name, icon }, index) => {
+							const apps = groups.get(key) ?? [];
+							const count = apps.reduce((sum, app) => sum + app.count, 0);
+							return (
+								<Fragment key={key}>
+									{index > 0 && <ValueSeparator />}
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant="subtle"
+												size="xs"
+												aria-label={`${name}: ${count} active connections`}
+												className="min-w-0 gap-1 p-0 font-mono text-xs [&>img]:p-0 [&>svg]:p-0"
+											>
+												{icon}
+												{sessionCount ? count : "-"}
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent className="p-3 font-sans text-xs">
+											<div className="mb-2 font-medium text-content-primary">
+												{name}
+											</div>
+											{apps.length === 0 ? (
+												<div>No active connections</div>
+											) : (
+												<ul className="m-0 grid max-h-64 list-none gap-2 overflow-y-auto p-0">
+													{apps.map((app) => (
+														<li
+															key={app.id}
+															className="flex items-center gap-2"
+														>
+															<AppLabel
+																icon={app.icon}
+																name={app.display_name}
+															/>
+															<span className="font-mono">{app.count}</span>
+														</li>
+													))}
+												</ul>
+											)}
+										</TooltipContent>
+									</Tooltip>
+								</Fragment>
+							);
+						})}
 					</div>
 				</div>
 			</TooltipProvider>
@@ -440,55 +413,17 @@ const ActiveConnections = memo(
 	},
 );
 
-const ActiveConnection: FC<{
-	icon?: string;
-	count: number;
-	name: string;
-}> = ({ icon, count, name }) => (
-	<Tooltip>
-		<TooltipTrigger asChild>
-			<Button
-				variant="subtle"
-				size="xs"
-				aria-label={`${name}: ${count} active connections`}
-				className="gap-1 p-0 font-mono text-xs"
-			>
-				<AppLabel icon={icon} name={name} nameClassName="max-w-32 truncate" />
-				{count}
-			</Button>
-		</TooltipTrigger>
-		<TooltipContent>{name}</TooltipContent>
-	</Tooltip>
+/** Renders an app's icon and name. Only bundled "/icon/" paths load. */
+const AppLabel: FC<{ icon?: string; name: string }> = ({ icon, name }) => (
+	<>
+		{icon?.startsWith("/icon/") ? (
+			<ExternalImage src={icon} className="size-icon-xs shrink-0" />
+		) : (
+			<AppWindowIcon className="size-icon-xs shrink-0" />
+		)}
+		<span className="min-w-0 flex-1 break-words">{name}</span>
+	</>
 );
-
-const AppLabel: FC<{
-	icon?: string;
-	name: string;
-	showName?: boolean;
-	nameClassName?: string;
-}> = ({ icon, name, showName, nameClassName }) => {
-	// Keyed by path, not a boolean, so a later icon change retries.
-	const [failedIcon, setFailedIcon] = useState<string>();
-	// Only server-curated "/icon/" paths reach an image source.
-	const src =
-		icon?.startsWith("/icon/") && icon !== failedIcon ? icon : undefined;
-
-	return (
-		<>
-			{src ? (
-				<ExternalImage
-					src={src}
-					alt={showName ? "" : `${name} icon`}
-					className="size-icon-xs shrink-0"
-					onError={() => setFailedIcon(src)}
-				/>
-			) : (
-				<AppWindowIcon className="size-icon-xs shrink-0" />
-			)}
-			{(showName || !src) && <span className={nameClassName}>{name}</span>}
-		</>
-	);
-};
 
 type WorkspaceBuildValueProps = {
 	status: WorkspaceStatus;

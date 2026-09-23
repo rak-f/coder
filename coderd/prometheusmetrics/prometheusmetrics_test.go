@@ -815,7 +815,6 @@ func (s *sessionStatsStore) GetWorkspaceAgentUsageStatsAndLabels(ctx context.Con
 	return converted, err
 }
 
-// TestAgentStatsSessionCounts covers the per-app gauge across polls.
 func TestAgentStatsSessionCounts(t *testing.T) {
 	t.Parallel()
 

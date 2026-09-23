@@ -31,6 +31,9 @@ const (
 	AppFamilyUnknown AppFamilyName = "unknown"
 )
 
+// AppNameOverflow sums the app names past the per-report cap.
+const AppNameOverflow = "overflow"
+
 // SessionCountApp is one app's session count and how to present it.
 type SessionCountApp struct {
 	Count int64 `json:"count"`
@@ -165,9 +168,8 @@ type appMapValue interface {
 	int64 | []uuid.UUID
 }
 
-// DecodeAppMap decodes a JSONB payload keyed by app name. An absent or null
-// payload is empty, because an empty aggregate returns SQL NULL. A malformed
-// one errors, so a failed read never looks like zero usage.
+// DecodeAppMap decodes an app-keyed JSONB payload. An absent or SQL NULL
+// payload decodes as empty; a malformed one errors rather than reading as zero.
 func DecodeAppMap[V appMapValue](raw json.RawMessage) (map[string]V, error) {
 	var decoded map[string]V
 	if len(raw) > 0 {
