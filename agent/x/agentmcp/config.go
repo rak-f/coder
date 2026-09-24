@@ -71,6 +71,7 @@ func ParseConfig(path string) ([]ServerConfig, error) {
 		}
 
 		resolveEnvVars(entry.Env)
+		resolveEnvVars(entry.Headers)
 
 		servers = append(servers, ServerConfig{
 			Name:      name,
@@ -106,10 +107,10 @@ func inferTransport(e mcpServerEntry) string {
 	return ""
 }
 
-// resolveEnvVars expands ${VAR} references in env map values
-// using the current process environment.
-func resolveEnvVars(env map[string]string) {
-	for k, v := range env {
-		env[k] = os.Expand(v, os.Getenv)
+// resolveEnvVars expands ${VAR} references in env and header map
+// values using the current process environment.
+func resolveEnvVars(values map[string]string) {
+	for k, v := range values {
+		values[k] = os.Expand(v, os.Getenv)
 	}
 }

@@ -218,6 +218,27 @@ agent spawns the process in the workspace.
 **HTTP transport**: set `url`, and optionally `headers`. The agent connects
 to the HTTP endpoint from the workspace.
 
+### Credentials
+
+`.mcp.json` usually lives in the repository, so keep credentials out of the file itself.
+The agent expands `${VAR}` references in `env` and `headers` values from its own environment, so a server can read its token from a workspace environment variable:
+
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "type": "http",
+      "url": "https://mcp.firecrawl.dev/v2/mcp",
+      "headers": { "Authorization": "Bearer ${FIRECRAWL_API_KEY}" }
+    }
+  }
+}
+```
+
+Set the variable on the workspace agent, for example in the `env` block of the `coder_agent` resource in your template.
+A variable that isn't set expands to an empty string, so the server fails to authenticate and the agent skips it while the other servers still load.
+The example above connects to the hosted [Firecrawl](https://docs.firecrawl.dev/mcp-server) server, which adds web search and scraping tools to the chat.
+
 ### How discovery works
 
 The agent connects to the servers declared in `.mcp.json` once startup scripts finish.
