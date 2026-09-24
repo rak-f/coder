@@ -220,8 +220,8 @@ to the HTTP endpoint from the workspace.
 
 ### Credentials
 
-`.mcp.json` usually lives in the repository, so keep credentials out of the file itself.
-The agent expands `${VAR}` references in `env` and `headers` values from its own environment, so a server can read its token from a workspace environment variable:
+Because `.mcp.json` can live in the repository, keep credentials out of the file.
+The agent expands `${VAR}` placeholders in a server's `headers` values from the environment it runs MCP servers with, so the credential can come from the `env` block of the `coder_agent` resource in your template or from a [user secret](../../user-guides/user-secrets.md) with an environment variable target:
 
 ```json
 {
@@ -235,8 +235,8 @@ The agent expands `${VAR}` references in `env` and `headers` values from its own
 }
 ```
 
-Set the variable on the workspace agent, for example in the `env` block of the `coder_agent` resource in your template.
-A variable that isn't set expands to an empty string, so the server fails to authenticate and the agent skips it while the other servers still load.
+Only the braced form is a reference, so a header value that contains a literal `$` is sent unchanged.
+A placeholder whose variable isn't set expands to an empty string, and the server receives the header with that empty value.
 The example above connects to the hosted [Firecrawl](https://docs.firecrawl.dev/mcp-server) server, which adds web search and scraping tools to the chat.
 
 ### How discovery works

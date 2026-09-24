@@ -238,40 +238,6 @@ func TestParseConfig_EnvVarInterpolation(t *testing.T) {
 	}, got)
 }
 
-// TestParseConfig_HeaderEnvVarInterpolation verifies that ${VAR}
-// references in header values are resolved from the process
-// environment, so a remote server's credentials can stay out of
-// .mcp.json. This test cannot be parallel because t.Setenv is
-// incompatible with t.Parallel.
-func TestParseConfig_HeaderEnvVarInterpolation(t *testing.T) {
-	t.Setenv("TEST_MCP_API_KEY", "fc-secret")
-
-	content := mustJSON(t, map[string]any{
-		"mcpServers": map[string]any{
-			"remote": map[string]any{
-				"url":     "https://example.com/mcp",
-				"headers": map[string]string{"Authorization": "Bearer ${TEST_MCP_API_KEY}"},
-			},
-		},
-	})
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, ".mcp.json")
-	err := os.WriteFile(path, []byte(content), 0o600)
-	require.NoError(t, err)
-
-	got, err := agentmcp.ParseConfig(path)
-	require.NoError(t, err)
-	require.Equal(t, []agentmcp.ServerConfig{
-		{
-			Name:      "remote",
-			Transport: "http",
-			URL:       "https://example.com/mcp",
-			Headers:   map[string]string{"Authorization": "Bearer fc-secret"},
-		},
-	}, got)
-}
-
 func TestParseConfig_FileNotFound(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -323,6 +325,56 @@ func TestCreateTransport_StdioSetsWorkingDir(t *testing.T) {
 	cmdTransport, ok := transport.(*mcp.CommandTransport)
 	require.True(t, ok)
 	assert.Equal(t, workDir, cmdTransport.Command.Dir)
+}
+
+// TestCreateTransport_HTTPResolvesHeaderEnvVars verifies ${VAR}
+// placeholders in a remote server's headers are expanded from the
+// environment MCP servers run with, which the updateEnv callback
+// enriches with the template's coder_agent env and the user's secrets,
+// rather than from the agent process environment alone. It also pins the
+// braced-only rule: an unbraced "$" is part of the value, not a
+// reference.
+func TestCreateTransport_HTTPResolvesHeaderEnvVars(t *testing.T) {
+	t.Parallel()
+
+	ctx := testutil.Context(t, testutil.WaitShort)
+	updateEnv := func(current []string) ([]string, error) {
+		return append(current, "TEST_MCP_API_KEY=key-from-manifest"), nil
+	}
+	m := NewManager(ctx, slogtest.Make(t, nil), agentexec.DefaultExecer, nil, nil, updateEnv, nil)
+	t.Cleanup(func() { _ = m.Close() })
+
+	received := make(chan http.Header, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		received <- r.Header.Clone()
+	}))
+	defer srv.Close()
+
+	transport, err := m.createTransport(ctx, ServerConfig{
+		Name:      "remote",
+		Transport: "http",
+		URL:       srv.URL,
+		Headers: map[string]string{
+			"Authorization": "Bearer ${TEST_MCP_API_KEY}",
+			"X-Unset":       "${TEST_MCP_UNSET_KEY}",
+			"X-Literal":     "prefix$TEST_MCP_API_KEY",
+		},
+	})
+	require.NoError(t, err)
+
+	httpTransport, ok := transport.(*mcp.StreamableClientTransport)
+	require.True(t, ok)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	resp, err := httpTransport.HTTPClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	header := testutil.RequireReceive(ctx, t, received)
+	assert.Equal(t, "Bearer key-from-manifest", header.Get("Authorization"))
+	assert.Empty(t, header.Get("X-Unset"))
+	assert.Equal(t, "prefix$TEST_MCP_API_KEY", header.Get("X-Literal"))
 }
 
 // TestResolveWorkingDir covers resolveWorkingDir's fallback: nil/empty,

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -34,6 +35,9 @@ import (
 // in prefixed tool names. Double underscore avoids collisions with
 // tool names that may contain single underscores.
 const ToolNameSep = "__"
+
+// bracedEnvRef matches a ${VAR} placeholder in an MCP server header value.
+var bracedEnvRef = regexp.MustCompile(`\$\{[a-zA-Z_][a-zA-Z0-9_]*\}`)
 
 // connectTimeout bounds how long we wait for a single MCP server
 // to start its transport and complete initialization.
@@ -914,12 +918,12 @@ func (m *Manager) createTransport(ctx context.Context, cfg ServerConfig) (mcp.Tr
 	case "http", "":
 		return &mcp.StreamableClientTransport{
 			Endpoint:   cfg.URL,
-			HTTPClient: httpClientWithHeaders(cfg.Headers),
+			HTTPClient: httpClientWithHeaders(m.resolveHeaders(ctx, cfg.Headers)),
 		}, nil
 	case "sse":
 		return &mcp.SSEClientTransport{
 			Endpoint:   cfg.URL,
-			HTTPClient: httpClientWithHeaders(cfg.Headers),
+			HTTPClient: httpClientWithHeaders(m.resolveHeaders(ctx, cfg.Headers)),
 		}, nil
 	default:
 		return nil, xerrors.Errorf("unsupported transport %q", cfg.Transport)
@@ -981,6 +985,34 @@ func (m *Manager) buildEnv(ctx context.Context, explicit map[string]string) []st
 		}
 	}
 	return env
+}
+
+// resolveHeaders expands ${VAR} placeholders in header values using the
+// same environment stdio servers receive, so a remote server's credential
+// can come from the workspace environment rather than the config file,
+// which usually lives in the repository. Only the braced form is
+// expanded, so a literal "$" in a header value survives; a placeholder
+// whose variable is unset resolves to an empty string, matching how env
+// values are expanded.
+func (m *Manager) resolveHeaders(ctx context.Context, headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return headers
+	}
+
+	env := make(map[string]string)
+	for _, kv := range m.buildEnv(ctx, nil) {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			env[k] = v
+		}
+	}
+
+	resolved := make(map[string]string, len(headers))
+	for name, value := range headers {
+		resolved[name] = bracedEnvRef.ReplaceAllStringFunc(value, func(ref string) string {
+			return env[strings.TrimSuffix(strings.TrimPrefix(ref, "${"), "}")]
+		})
+	}
+	return resolved
 }
 
 // splitToolName extracts the server name and original tool name
